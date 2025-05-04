@@ -30,7 +30,6 @@ public:
     // control flags
     bool showGui;
     bool recording;
-
     ofxNI2::ColorStream rgbStream;
     ofxNI2::DepthStream depth;
     
@@ -76,6 +75,7 @@ public:
     ofxToggle colToDepth;       // force map color range to whole depth image
     ofxToggle trackColor;       // keep both color sliders in sync
 
+    ofxToggle showRGB;          // display RGB feed
 
     ofPoint point0; 
     ofPoint point_max_x  ;

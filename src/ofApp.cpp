@@ -5,6 +5,9 @@ bool liveDevice;
 ofEasyCam cam;
 //
 //--------------------------------------------------------------
+// todo put kinect pointcloud stuff in class
+//
+
 void ofApp::setup()
 {
     ofSetFrameRate(60);
@@ -27,6 +30,7 @@ void ofApp::setup()
     paramGroup.add(ghosts.setup("Ghosting",0,0,5)); 
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" , true));
+    paramGroup.add(showRGB.setup("show rgb",false));
 
     //paramGroup.add(dpHeight.set("dpHeight",480));
     //paramGroup.add(dpWidth.set("dpWidth",640));
@@ -142,7 +146,10 @@ void ofApp::draw()
 //    depthTexture.loadData(depthPixels,GL_RGBA);
 
     if(showPointCloud){
-        rgbStream.draw(0,0,ofGetWidth(),ofGetHeight());
+        if(showRGB){
+            rgbStream.draw(0,0,ofGetWidth(),ofGetHeight());
+        }
+        
         drawPointCloud();
         
     } 
@@ -338,8 +345,9 @@ void ofApp::keyPressed(int key)
         ofFileDialogResult res;
         res = ofSystemLoadDialog("Loading Preset");
         if(res.bSuccess) panel.loadFromFile(res.filePath);
-
-
+    }
+    if(key=='c'){
+        showRGB = !showRGB;
     }
 }
 
