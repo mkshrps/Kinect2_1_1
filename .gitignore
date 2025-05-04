@@ -11,8 +11,8 @@
 
 /bin/*
 #!/bin/data/
-.vscode/browse.db
-
+.vscode/*
+*.code-workspace
 
 #########
 # general
