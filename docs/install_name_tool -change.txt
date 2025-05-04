@@ -1,0 +1,4 @@
+install_name_tool -change libOpenNI2.dylib @executable_path/../MacOS/libOpenNI2.dylib "~/Documents/softwareDevelopment/of_v0.12.0_osx_release/apps/myApps/Kinect2_1/bin/Kinect2_1.app/Contents/MacOS/Kinect2_1"
+
+
+install_name_tool -change libOpenNI2.dylib @executable_path/../MacOS/libOpenNI2.dylib /Users/mikes/Documents/softwareDevelopment/of_v0.12.0_osx_release/apps/myApps/Kinect2_1/bin/Kinect2_1.app/Contents/MacOS/Kinect2_1
