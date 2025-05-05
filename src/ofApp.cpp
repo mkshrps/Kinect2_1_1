@@ -14,7 +14,7 @@ void ofApp::setup()
     ofSetVerticalSync(true);
     ofBackground(0);
     panel.setup("", "settings.xml", 10, 100);
-    
+    mouseDepth = 0;
     pointSize = 3;
     camGroup.setup("Virtual Camera");
     camGroup.add(cam_x);
@@ -171,6 +171,11 @@ void ofApp::draw()
             
         }
     }
+        ofSetColor(255,255,255);
+    //    ofPushMatrix();
+        ofDrawBitmapString("Depth xy "+ofToString(mouseDepth),ofGetMouseX(),ofGetMouseY());
+    //    ofPopMatrix();
+ 
     if(showGui){
         panel.draw();
     }
@@ -366,11 +371,22 @@ void ofApp::keyPressed(int key)
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){}
-void ofApp::mouseMoved(int x, int y){}
+void ofApp::mouseMoved(int x, int y){
+    if(!showPointCloud){
+        if(depthPixels.isAllocated()){
+            cout << "mouse dragged" << x << " " << y << endl;
+            int idx = depthPixels.getPixelIndex(x,y);
+            mouseDepth = depthPixels[idx];
+        }
+         
+    }
+    
+}
 
 void ofApp::mouseDragged(int x, int y, int button)
 {
-    
+
+        
 }
 
 //--------------------------------------------------------------

@@ -83,7 +83,8 @@ public:
     ofPoint point_max_y  ;
     ofPoint point_max_xy ;
     ofPoint point_half;
-
+    unsigned short mouseDepth;
+    
     vector<ofPoint> pt;
     openni::Recorder *oni_recorder;
     int framecount;
