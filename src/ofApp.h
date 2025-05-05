@@ -75,7 +75,7 @@ public:
     ofxToggle getFullDepthRange;
     ofxToggle colToDepth;       // force map color range to whole depth image
     ofxToggle trackColor;       // keep both color sliders in sync
-    ofxToggle showRegistered;
+    //ofxToggle enableRgbRegistered; // register RGB and Depth streams
     ofxToggle showRGB;          // display RGB feed
 
     ofPoint point0; 

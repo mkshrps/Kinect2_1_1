@@ -31,7 +31,7 @@ void ofApp::setup()
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" , true));
     paramGroup.add(showRGB.setup("show rgb",false));
-    paramGroup.add(showRegistered.setup("show registered",false));
+   // paramGroup.add(enableRgbRegistered.setup("show registered",false));
 
     //paramGroup.add(dpHeight.set("dpHeight",480));
     //paramGroup.add(dpWidth.set("dpWidth",640));
@@ -63,6 +63,8 @@ void ofApp::setup()
             rgb_w = rgbStream.getWidth();
             rgb_h = rgbStream.getHeight();
             rgbStream.setFps(30);
+        //    rgbStream.setWidth(depth.getWidth());
+        //    rgbStream.setHeight(depth.getHeight());
             rgbStream.start();
         }
     }
@@ -104,7 +106,7 @@ void ofApp::update()
     if(liveDevice) {
         device.update();
         if(rgbStream.isFrameNew()){
-        rgbTex.loadData(rgbStream.getPixelsRef());
+            rgbTex.loadData(rgbStream.getPixelsRef());
         }
     } 
     else {
@@ -151,9 +153,6 @@ void ofApp::draw()
 //    depthTexture.loadData(depthPixels,GL_RGBA);
 
     if(showPointCloud){
-        if(showRGB){
-            rgbStream.draw(0,0,ofGetWidth(),ofGetHeight());
-        }
         
         drawPointCloud();
         
@@ -161,8 +160,9 @@ void ofApp::draw()
     else
     {
         if(liveDevice){
-            rgbStream.draw(640,0,640,480);
-            depthTexture.draw(0,0,depthTexture.getWidth(),depthTexture.getHeight());
+            
+            rgbStream.draw(640,0,rgbStream.getWidth(),rgbStream.getHeight());
+//            depthTexture.draw(0,0,640,480);
         }
 
         // depth texture is allocated automagically when the first Depth frame is updated
@@ -239,14 +239,21 @@ void ofApp::createPointCloud_1(){
                 pointCloud.addVertex(point);
                 //pointCloud.addColor(ofColor(0,255,0));
                 ofColor col;
-                if(colToDepth){
-                    col.setHsb(ofMap(dval,nearclip,farclip,0,255),255,255);
+                if(!showRGB){
+                    if(colToDepth){
+                        col.setHsb(ofMap(dval,nearclip,farclip,0,255),255,255);
+                    }
+                    else{
+                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
+                    
+                    }
                 }
                 else{
-                  col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
-                  
+                    
+                    col = rgbStream.getPixelsRef().getColor(x,y);
+                    col.setBrightness(ofRandom(255));
                 }
-                  pointCloud.addColor(col);
+                    pointCloud.addColor(col);
             }
         }
     }
