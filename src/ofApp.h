@@ -33,6 +33,7 @@ public:
     ofxNI2::ColorStream rgbStream;
     ofxNI2::DepthStream depth;
     
+    
     ofxNI2::Device device;              // Live Kinect device
     ofxNI2::Device playbackDevice;       // Playback Device
     //openni::Device& dev = playbackDevice.operator openni::Device &(); 
@@ -74,7 +75,7 @@ public:
     ofxToggle getFullDepthRange;
     ofxToggle colToDepth;       // force map color range to whole depth image
     ofxToggle trackColor;       // keep both color sliders in sync
-
+    ofxToggle showRegistered;
     ofxToggle showRGB;          // display RGB feed
 
     ofPoint point0; 

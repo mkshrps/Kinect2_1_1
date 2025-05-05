@@ -31,6 +31,7 @@ void ofApp::setup()
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" , true));
     paramGroup.add(showRGB.setup("show rgb",false));
+    paramGroup.add(showRegistered.setup("show registered",false));
 
     //paramGroup.add(dpHeight.set("dpHeight",480));
     //paramGroup.add(dpWidth.set("dpWidth",640));
@@ -45,16 +46,20 @@ void ofApp::setup()
     panel.loadFromFile("settings.xml");
 //  edit this when playing back a recorded file
     liveDevice = true;
+   
 
     if(liveDevice){
 	    device.setLogLevel(OF_LOG_NOTICE);
         device.setup();
+        device.setEnableRegistration();
+        cout << "registration support" << device.getEnableRegistration() << endl;
         depth.setup(device);      
         depth.setFps(30);
 		depth.start();
-        
+            
         if (rgbStream.setup(device)) // only for kinect device (no rgbStream on orbbec astra)
         {    
+            
             rgb_w = rgbStream.getWidth();
             rgb_h = rgbStream.getHeight();
             rgbStream.setFps(30);
@@ -157,6 +162,7 @@ void ofApp::draw()
     {
         if(liveDevice){
             rgbStream.draw(640,0,640,480);
+            depthTexture.draw(0,0,depthTexture.getWidth(),depthTexture.getHeight());
         }
 
         // depth texture is allocated automagically when the first Depth frame is updated
