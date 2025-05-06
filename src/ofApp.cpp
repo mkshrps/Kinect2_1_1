@@ -123,11 +123,13 @@ void ofApp::update()
     if(depth.isFrameNew()){
 
         //depthPixels = depth.getPixelsRef(20,6000,false); // access the depth data and specify near and far range for grayscale shading
+        // default depth.getPixelsRef() returns depth in mm between 0.5 and 4.5m
+        // passing near clip and far clip returns raw depth data i.e. unsigned int value between 0 - 65535
         if(getFullDepthRange){
-            depthPixels = depth.getPixelsRef(); // thhe whole depth image
+            depthPixels = depth.getPixelsRef(); // real world depth image
         }
         else{ 
-            depthPixels = depth.getPixelsRef(nearclip,farclip,false); // access the depth data and specify near and far range for grayscale shading
+            depthPixels = depth.getPixelsRef(nearclip,farclip,invert); // access the depth data and specify near and far range for grayscale shading
         }
 
         depthTexture.loadData(depthPixels);
@@ -250,7 +252,6 @@ void ofApp::createPointCloud_1(){
                     }
                     else{
                         col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
-                    
                     }
                 }
                 else{
@@ -342,7 +343,7 @@ void ofApp::keyPressed(int key)
         device.stopRecord();
     }
 
-    if (key == 'x'){
+    if (key == 'm'){
         openni::Device & dev = playbackDevice.get();
         dev.getPlaybackControl()->seek(depth,1);
     }
@@ -363,11 +364,24 @@ void ofApp::keyPressed(int key)
         ofFileDialogResult res;
         res = ofSystemLoadDialog("Loading Preset");
         if(res.bSuccess) panel.loadFromFile(res.filePath);
+        // set the camera to the preset position
+        // otherwise the gui settings will be updated during the next update
+        cam.setPosition(cam_x,cam_y,cam_z);
+
     }
+
+    if(key=='x'){
+        cam.reset();
+        cam.setGlobalPosition(200,-300,2000);
+    }
+
     if(key=='c'){
         showRGB = !showRGB;
     }
+
 }
+
+
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){}
@@ -380,7 +394,6 @@ void ofApp::mouseMoved(int x, int y){
         }
          
     }
-    
 }
 
 void ofApp::mouseDragged(int x, int y, int button)
