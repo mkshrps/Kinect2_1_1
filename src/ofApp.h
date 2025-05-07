@@ -30,9 +30,10 @@ public:
     // control flags
     bool showGui;
     bool recording;
+    bool depthCamView;
     ofxNI2::ColorStream rgbStream;
     ofxNI2::DepthStream depth;
-    
+    ofSpherePrimitive originSphere;
     
     ofxNI2::Device device;              // Live Kinect device
     ofxNI2::Device playbackDevice;       // Playback Device
@@ -51,6 +52,9 @@ public:
     ofParameter<float>cam_y{"cam y",0,-1000,1000};
     ofParameter<float>cam_x{"cam x",0,-1000,1000};
     ofParameter<float>cam_z{"cam z",0,-1000,1000};
+    
+
+
     ofParameter<float>dpHeight{"depth pix height",0,1,32000};
     ofParameter<float>dpWidth{"depth pix height",0,1,32000};
 
@@ -60,7 +64,8 @@ public:
     ofxFloatSlider colMin;
     ofxFloatSlider colMax;
     ofxIntSlider ghosts;
-    
+    ofxFloatSlider cam_heading;
+
 
     //ofParameter<float>farclip{"far clip",3000,500,5000}; 
 

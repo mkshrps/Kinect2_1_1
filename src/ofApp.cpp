@@ -20,6 +20,8 @@ void ofApp::setup()
     camGroup.add(cam_x);
     camGroup.add(cam_y);
     camGroup.add(cam_z);
+    camGroup.add(cam_heading.setup("cam heading",0,0,360));
+    
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",3,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
@@ -87,7 +89,12 @@ void ofApp::setup()
     }  
 //    tracker.setup(device);
     framecount = 0;
-    cam.move(200,-300,2000);
+    cam.setGlobalPosition(200,-300,-1000);
+//    cam.lookAt(ofVec3f(0.0,0.0,0.0));
+    cam.setTarget(ofVec3f(0.0,0.0,0.0));
+
+    depthCamView = true;
+
     //farclip = cam.getFarClip();
     
 
@@ -103,6 +110,17 @@ void ofApp::exit()
 //--------------------------------------------------------------
 void ofApp::update()
 {
+    // update the gui camera settings 
+    cam_x = cam.getX();
+    cam_y = cam.getY();
+    cam_z = cam.getZ();
+    cam_heading = cam.getHeading();
+
+    //cam_heading = cam.getHeadingDeg();
+
+    //cam_target = cam.getLookAtDir();
+    
+
     if(liveDevice) {
         device.update();
         if(rgbStream.isFrameNew()){
@@ -155,9 +173,19 @@ void ofApp::draw()
 //    depthTexture.loadData(depthPixels,GL_RGBA);
 
     if(showPointCloud){
-        
+       
+    
         drawPointCloud();
+
+        ofSetColor(255,255,255);
+        cam.begin();
+        ofEnableDepthTest();
         
+        originSphere.setPosition(0,0,0);
+        originSphere.setRadius(2);
+        originSphere.draw();    
+        ofDisableDepthTest();
+        cam.end();
     } 
     else
     {
@@ -184,9 +212,21 @@ void ofApp::draw()
     
     //ofDrawBitmapString("Tracker FPS: "+ofToString(tracker.getFrameRate()),20,ofGetHeight()-40);
     //ofDrawBitmapString("Depth size: "+ofToString(depth.getPixelsRef().getWidth())+" "+ofToString(depth.getPixelsRef().getHeight()),20,ofGetHeight()-40);
+    const ofNode &target = cam.getTarget();
+    float dirX = target.getX();
+    float dirY = target.getY();
+    float dirZ = target.getZ();
+
+    stringstream ss;
+    ofDrawBitmapString("cam heading "+ofToString(cam.getHeading())+"Target X,Y,Z "+ofToString(dirX)+" "+ofToString(dirY)+" "+ofToString(dirZ),20,ofGetHeight()-60);
     ofDrawBitmapString("Depth size: "+ofToString(depthPixels.getWidth())+" "+ofToString(depthPixels.getHeight()),20,ofGetHeight()-40);
     ofDrawBitmapString("Application FPS: "+ofToString(ofGetFrameRate()),20,ofGetHeight()-20);
-
+    if(!depthCamView){
+        ofDrawBitmapString("Virtual Cam View",20,ofGetHeight()-80);
+    }
+    else{
+        ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-80);
+    }
 }
 
 void testDepthValues(){
@@ -274,10 +314,8 @@ void ofApp::drawPointCloud(){
     ofPushMatrix();
     
 
-    cam_x = cam.getX();
-    cam_y = cam.getY();
-    cam_z = cam.getZ();
-    ofScale(1, 1, 1);
+
+    //ofScale(1, 1, 1);
     ofScale(1, -1, 1);
     pointCloud.drawVertices();
     int blur  = ghosts;
@@ -366,20 +404,41 @@ void ofApp::keyPressed(int key)
         if(res.bSuccess) panel.loadFromFile(res.filePath);
         // set the camera to the preset position
         // otherwise the gui settings will be updated during the next update
-        cam.setPosition(cam_x,cam_y,cam_z);
+        cam.setGlobalPosition(cam_x,cam_y,cam_z);
+         
+        //cam.set
+        //cam.lookAt(ofVec3f(0.0,0.0,0.0));
+
 
     }
 
     if(key=='x'){
-        cam.reset();
-        cam.setGlobalPosition(200,-300,2000);
+       // cam.reset();
+        //cam.setGlobalPosition(200,-300,-1000);
+        cam.lookAt(ofVec3f(0.0,0.0,0.0));
+        depthCamView = true;
     }
 
     if(key=='c'){
         showRGB = !showRGB;
     }
-
+    if(key=='1'){
+           // cam.reset();
+           cam.setGlobalPosition(300,-240,1500);
+           cam.lookAt(ofVec3f(300.0,-240.0,0.0));
+           depthCamView = false;
+    }
+    if(key=='2'){
+           // cam.reset();
+           cam.setGlobalPosition(300,-240,0);
+           cam.lookAt(ofVec3f(300.0,-240.0,0.0));
+           
+           depthCamView = true; 
+    }
+     
 }
+
+
 
 
 
