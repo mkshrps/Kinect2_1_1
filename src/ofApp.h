@@ -29,6 +29,8 @@ public:
     void drawSkeleton();
     void audioIn(ofSoundBuffer & input);
     void drawSound();
+
+    void resetCamPos();
      // control flags
     bool showGui;
     bool recording;

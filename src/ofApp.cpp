@@ -134,8 +134,11 @@ void ofApp::setup()
   
     //    tracker.setup(device);
     framecount = 0;
-    cam.setGlobalPosition(200,-300,500);
-    //    cam.lookAt(ofVec3f(0.0,0.0,0.0));
+    resetCamPos();
+
+// cam.setGlobalPosition(200,-300,-1500);
+
+//    cam.lookAt(ofVec3f(200,-300,0.0));
     //cam.setTarget(ofVec3f(0.0,0.0,0.0));
 
     depthCamView = true;
@@ -206,11 +209,6 @@ void ofApp::update()
     cam_y = cam.getY();
     cam_z = cam.getZ();
     cam_heading = cam.getHeading();
-
-    //cam_heading = cam.getHeadingDeg();
-
-    //cam_target = cam.getLookAtDir();
-    
 
     if(liveDevice) {
         device.update();
@@ -534,6 +532,12 @@ void ofApp::drawPointCloud(){
 
 }
 
+void ofApp::resetCamPos(){
+        cam.setGlobalPosition(200,-300,-500);
+        cam.lookAt(ofVec3f(200,-300,0.0));
+        depthCamView = true;
+ }
+
 // file handling , recording, key handling etc
 
 bool ofApp::startRecord(string filename, bool allowLossyCompression, ofxNI2::DepthStream& stream)
@@ -604,7 +608,12 @@ void ofApp::keyPressed(int key)
         // set the camera to the preset position
         // otherwise the gui settings will be updated during the next update
         cam.setGlobalPosition(cam_x,cam_y,cam_z);
-         
+        int flipx = 1;
+        if(cam_z < 0){
+            flipx = -1;
+        }
+        cam.lookAt(ofVec3f(200,-300 * flipx,0.0));
+ 
         //cam.set
         //cam.lookAt(ofVec3f(0.0,0.0,0.0));
 
@@ -614,8 +623,7 @@ void ofApp::keyPressed(int key)
     if(key=='x'){
        // cam.reset();
         //cam.setGlobalPosition(200,-300,-1000);
-        cam.lookAt(ofVec3f(0.0,0.0,0.0));
-        depthCamView = true;
+        resetCamPos();
     }
 
     if(key=='c'){
@@ -629,6 +637,7 @@ void ofApp::keyPressed(int key)
            cam.lookAt(ofVec3f(300.0,-240.0,0.0));
            depthCamView = false;
     }
+
     if(key=='2'){
            // cam.reset();
            cam.setGlobalPosition(300,-240,-500);
@@ -636,7 +645,8 @@ void ofApp::keyPressed(int key)
            
            depthCamView = true; 
     }
-	if( key == 'a' ){
+
+    if( key == 'a' ){
 		//soundStream.start();
         drawSoundEnabled = !drawSoundEnabled;
 	}
