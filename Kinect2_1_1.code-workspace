@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "${workspaceRoot}/../../../../addons"
+		},
+		{
+			"path": "../AudioResponder"
 		}
 	],
 	"settings": {}

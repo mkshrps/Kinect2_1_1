@@ -27,7 +27,9 @@ public:
 	void createPointCloud_1();
     bool startRecord(string filename, bool allowLossyCompression, ofxNI2::DepthStream& stream);
     void drawSkeleton();
-    // control flags
+    void audioIn(ofSoundBuffer & input);
+    void drawSound();
+     // control flags
     bool showGui;
     bool recording;
     bool depthCamView;
@@ -63,9 +65,17 @@ public:
     ofxFloatSlider nearclip;
     ofxFloatSlider colMin;
     ofxFloatSlider colMax;
+
     ofxIntSlider ghosts;
     ofxFloatSlider cam_heading;
 
+    ofxFloatSlider volume_l;
+    ofxFloatSlider volume_r;
+    ofxFloatSlider   gain;
+    ofxFloatSlider   noiseGain;
+
+    ofxToggle addNoise;
+    ofxToggle addSound;
 
     //ofParameter<float>farclip{"far clip",3000,500,5000}; 
 
@@ -73,6 +83,7 @@ public:
     ofxGuiGroup recGroup;
     ofxGuiGroup camGroup;
     ofxGuiGroup paramGroup;
+    ofxGuiGroup soundGroup;
 
     ofParameter<bool> recordStatus;
     //ofParameter<bool> invert;
@@ -82,7 +93,7 @@ public:
     ofxToggle trackColor;       // keep both color sliders in sync
     //ofxToggle enableRgbRegistered; // register RGB and Depth streams
     ofxToggle showRGB;          // display RGB feed
-
+  
     ofPoint point0; 
     ofPoint point_max_x  ;
     ofPoint point_max_y  ;
@@ -95,6 +106,21 @@ public:
     int framecount;
     float rgb_w,rgb_h;
     int dfar;
+
+   bool drawSoundEnabled;
+
+	
+    vector <float> left;
+    vector <float> right;
+    vector <float> volHistory;
+    
+    int 	bufferCounter;
+    int 	drawCounter;
+    
+    float smoothedVol;
+    float scaledVol;
+    
+    ofSoundStream soundStream;
 
 
 

@@ -21,7 +21,14 @@ void ofApp::setup()
     camGroup.add(cam_y);
     camGroup.add(cam_z);
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
-    
+    soundGroup.setup("Audio");
+    soundGroup.add(volume_l.setup("vol L",0,0,10000));
+    soundGroup.add(volume_r.setup("vol R",0,0,10000));
+    soundGroup.add(gain.setup("Gain",10,0,100));
+    soundGroup.add(noiseGain.setup("Gain",0,0,10));
+    soundGroup.add(addNoise.setup("Noise",false));
+    soundGroup.add(addSound.setup("Sound",false));
+
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",3,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
@@ -42,6 +49,7 @@ void ofApp::setup()
     recGroup.setup("Depth Recording Status");
     recGroup.add( recordStatus.set( "recording", false ) );
     panel.add(&camGroup);
+    panel.add(&soundGroup);
     panel.add(&paramGroup);
     panel.add(&recGroup);
 
@@ -71,34 +79,72 @@ void ofApp::setup()
         }
     }
     else{
-        playbackDevice.setLogLevel(OF_LOG_NOTICE);
-        playbackDevice.setup("record2.oni");
-        depth.setup(playbackDevice);
-		depth.start();
-        //device.setDepthColorSyncEnabled(true);
-    //    openni::Device& dev = playbackDevice.operator openni::Device &(); 
-    
-    //    dev.getPlaybackControl();
+            playbackDevice.setLogLevel(OF_LOG_NOTICE);
+            playbackDevice.setup("record2.oni");
+            depth.setup(playbackDevice);
+            depth.start();
+    } 
 
-    //    cout << "number of frames" << dev.getPlaybackControl()->getNumberOfFrames(depth) << endl;
-    //    bool err = dev.getPlaybackControl()->setRepeatEnabled(TRUE);
-    //    cout << "set repeat enabled function returned " << err << endl;
-    //    cout << "repeat enabled flag" << dev.getPlaybackControl()->getRepeatEnabled() << endl;
-        //depth.
-        //device.setDepthColorSyncEnabled(true);
-    }  
-//    tracker.setup(device);
+    /******************************************* */
+    // add sound initialistion
+    soundStream.printDeviceList();
+    int bufferSize = 256;
+    left.assign(bufferSize, 0.0);
+    right.assign(bufferSize, 0.0);
+    volHistory.assign(400, 0.0);
+    
+    bufferCounter	= 0;
+    drawCounter		= 0;
+    smoothedVol     = 0.0;
+    scaledVol		= 0.0;
+
+    ofSoundStreamSettings settings;
+    
+    // if you want to set the device id to be different than the default
+    auto devices = soundStream.getDeviceList();
+    settings.setInDevice(devices[0]);
+
+	// you can also get devices for an specific api
+	// auto devices = soundStream.getDevicesByApi(ofSoundDevice::Api::PULSE);
+	// settings.device = devices[0];
+
+	// or get the default device for an specific api:
+	// settings.api = ofSoundDevice::Api::PULSE;
+
+	// or by name
+    //	auto devices = soundStream.getMatchingDevices("default");
+    //	if(!devices.empty()){
+    //		settings.setInDevice(devices[0]);
+    //	}
+
+    settings.setInListener(this);
+    settings.sampleRate = 44100;
+    #ifdef TARGET_EMSCRIPTEN
+        settings.numOutputChannels = 2;
+    #else
+        settings.numOutputChannels = 0;
+    #endif
+    settings.numInputChannels = 2;
+    settings.bufferSize = bufferSize;
+    soundStream.setup(settings);
+
+    /**************************************************** */   
+
+
+  
+    //    tracker.setup(device);
     framecount = 0;
-    cam.setGlobalPosition(200,-300,-1000);
-//    cam.lookAt(ofVec3f(0.0,0.0,0.0));
-    cam.setTarget(ofVec3f(0.0,0.0,0.0));
+    cam.setGlobalPosition(200,-300,500);
+    //    cam.lookAt(ofVec3f(0.0,0.0,0.0));
+    //cam.setTarget(ofVec3f(0.0,0.0,0.0));
 
     depthCamView = true;
 
     //farclip = cam.getFarClip();
-    
+ 
 
 }
+
 
 void ofApp::exit()
 {
@@ -108,8 +154,53 @@ void ofApp::exit()
 }
 
 //--------------------------------------------------------------
+void ofApp::audioIn(ofSoundBuffer & input){
+	
+	float curVol = 0.0;
+	
+	// samples are "interleaved"
+	int numCounted = 0;	
+
+	//lets go through each sample and calculate the root mean square which is a rough way to calculate volume	
+	for (size_t i = 0; i < input.getNumFrames(); i++){
+		left[i]		= input[i*2]*0.5;
+		right[i]	= input[i*2+1]*0.5;
+
+		curVol += left[i] * left[i];
+		curVol += right[i] * right[i];
+		numCounted+=2;
+	}
+	
+	//this is how we get the mean of rms :) 
+	curVol /= (float)numCounted;
+	
+	// this is how we get the root of rms :) 
+	curVol = sqrt( curVol );
+	
+	smoothedVol *= 0.93;
+	smoothedVol += 0.07 * curVol;
+    volume_l = smoothedVol * 100;
+    
+	bufferCounter++;
+	
+}
+
+//--------------------------------------------------------------
 void ofApp::update()
 {
+	//lets scale the vol up to a 0-1 range 
+	scaledVol = ofMap(smoothedVol, 0.0, 0.17, 0.0, 1.0, true);
+    volume_r = scaledVol;
+
+	//lets record the volume into an array
+	volHistory.push_back( scaledVol );
+	
+	//if we are bigger the the size we want to record - lets drop the oldest value
+	if( volHistory.size() >= 400 ){
+		volHistory.erase(volHistory.begin(), volHistory.begin()+1);
+	}
+
+
     // update the gui camera settings 
     cam_x = cam.getX();
     cam_y = cam.getY();
@@ -163,6 +254,96 @@ void ofApp::update()
 
 }
 
+//--------------------------------------------------------------
+void ofApp::drawSound(){
+	
+	ofSetColor(225);
+	ofDrawBitmapString("AUDIO INPUT EXAMPLE", 32, 32);
+	ofDrawBitmapString("press 's' to unpause the audio\n'e' to pause the audio", 31, 92);
+	
+	ofNoFill();
+	
+	// draw the left channel:
+	ofPushStyle();
+		ofPushMatrix();
+		ofTranslate(32, 170, 0);
+			
+		ofSetColor(225);
+		ofDrawBitmapString("Left Channel", 4, 18);
+		
+		ofSetLineWidth(1);	
+		ofDrawRectangle(0, 0, 512, 200);
+
+		ofSetColor(245, 58, 135);
+		ofSetLineWidth(3);
+					
+			ofBeginShape();
+			for (unsigned int i = 0; i < left.size(); i++){
+				ofVertex(i*2, 100 -left[i]*180.0f);
+			}
+			ofEndShape(false);
+			
+		ofPopMatrix();
+	ofPopStyle();
+
+	// draw the right channel:
+	ofPushStyle();
+		ofPushMatrix();
+		ofTranslate(32, 370, 0);
+			
+		ofSetColor(225);
+		ofDrawBitmapString("Right Channel", 4, 18);
+		
+		ofSetLineWidth(1);	
+		ofDrawRectangle(0, 0, 512, 200);
+
+		ofSetColor(245, 58, 135);
+		ofSetLineWidth(3);
+					
+			ofBeginShape();
+			for (unsigned int i = 0; i < right.size(); i++){
+				ofVertex(i*2, 100 -right[i]*180.0f);
+			}
+			ofEndShape(false);
+			
+		ofPopMatrix();
+	ofPopStyle();
+	
+	// draw the average volume:
+	ofPushStyle();
+		ofPushMatrix();
+		ofTranslate(565, 170, 0);
+			
+		ofSetColor(225);
+		ofDrawBitmapString("Scaled average vol (0-100): " + ofToString(scaledVol * 100.0, 0), 4, 18);
+		ofDrawRectangle(0, 0, 400, 400);
+		
+		ofSetColor(245, 58, 135);
+		ofFill();		
+		ofDrawCircle(200, 200, scaledVol * 190.0f);
+		
+		//lets draw the volume history as a graph
+		ofBeginShape();
+		for (unsigned int i = 0; i < volHistory.size(); i++){
+			if( i == 0 ) ofVertex(i, 400);
+
+			ofVertex(i, 400 - volHistory[i] * 70);
+			
+			if( i == volHistory.size() -1 ) ofVertex(i, 400);
+		}
+		ofEndShape(false);		
+			
+		ofPopMatrix();
+	ofPopStyle();
+	
+	drawCounter++;
+	
+	ofSetColor(225);
+	string reportString = "buffers received: "+ofToString(bufferCounter)+"\ndraw routines called: "+ofToString(drawCounter)+"\nticks: " + ofToString(soundStream.getTickCount());
+	ofDrawBitmapString(reportString, 32, 589);
+		
+}
+
 
 
 //--------------------------------------------------------------
@@ -171,7 +352,11 @@ void ofApp::draw()
     //depthPixels = tracker.getPixelsRef(1000, 4000);
 //    depthPixels = depth.getPixelsRef(300,10000,false);
 //    depthTexture.loadData(depthPixels,GL_RGBA);
+    if(drawSoundEnabled){
+        drawSound();
+    }
 
+    else{
     if(showPointCloud){
        
     
@@ -228,6 +413,7 @@ void ofApp::draw()
         ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-80);
     }
 }
+}
 
 void testDepthValues(){
 
@@ -257,7 +443,13 @@ void ofApp::createPointCloud_1(){
     //depthPixels = depth.getPixelsRef(100,1000,true);
 
     //glPointSize(pointSize.get());
-
+    //float noisy_x, noisy_y;
+    //float t = (ofGetElapsedTimeMillis()/10.0 ) ;
+    float noise ;
+    noise = ofNoise(ofRandom(10)) * noiseGain;
+    //cout << "Noise value" << noise;
+    
+    float dx;
     glPointSize(pointSize);
     for (std::size_t y = 0; y < depthPixels.getHeight(); y++)
     {
@@ -276,7 +468,13 @@ void ofApp::createPointCloud_1(){
               //  cout << "value" << dval << endl;
             //}
             // create a point in the x,y,z space
-            ofPoint point = ofPoint(x,y,dval); 
+            dx = x;
+            if(addNoise){
+                dx += noise;
+            } 
+
+            ofPoint point = ofPoint(dx,y,dval); 
+        //    ofPoint point = ofPoint(x,y,dval); 
             
             //if (x%200 == 0){
             //cout << "point" << point.x << point.y << point.z << endl;
@@ -288,11 +486,12 @@ void ofApp::createPointCloud_1(){
                 ofColor col;
                 if(!showRGB){
                     if(colToDepth){
-                        col.setHsb(ofMap(dval,nearclip,farclip,0,255),255,255);
+                        col.setHsb(ofMap(dval,nearclip,farclip,0,255) + noise,255,255);
                     }
                     else{
-                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
+                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax)+ noise,255,255);
                     }
+
                 }
                 else{
                     
@@ -422,6 +621,8 @@ void ofApp::keyPressed(int key)
     if(key=='c'){
         showRGB = !showRGB;
     }
+
+    // these are just for messing with at the moment
     if(key=='1'){
            // cam.reset();
            cam.setGlobalPosition(300,-240,1500);
@@ -430,12 +631,20 @@ void ofApp::keyPressed(int key)
     }
     if(key=='2'){
            // cam.reset();
-           cam.setGlobalPosition(300,-240,0);
+           cam.setGlobalPosition(300,-240,-500);
            cam.lookAt(ofVec3f(300.0,-240.0,0.0));
            
            depthCamView = true; 
     }
-     
+	if( key == 'a' ){
+		//soundStream.start();
+        drawSoundEnabled = !drawSoundEnabled;
+	}
+	
+	if( key == 'e' ){
+		soundStream.stop();
+        drawSoundEnabled = false;
+	}     
 }
 
 
@@ -447,11 +656,7 @@ void ofApp::keyReleased(int key){}
 void ofApp::mouseMoved(int x, int y){
     if(!showPointCloud){
         if(depthPixels.isAllocated()){
-            cout << "mouse dragged" << x << " " << y << endl;
-            int idx = depthPixels.getPixelIndex(x,y);
-            mouseDepth = depthPixels[idx];
         }
-         
     }
 }
 
