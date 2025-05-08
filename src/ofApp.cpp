@@ -444,10 +444,10 @@ void ofApp::createPointCloud_1(){
     //float noisy_x, noisy_y;
     //float t = (ofGetElapsedTimeMillis()/10.0 ) ;
     float noise ;
-    noise = ofNoise(ofRandom(10)) * noiseGain;
+    noise = (ofNoise(ofRandom(10)) -0.5) * noiseGain;
     //cout << "Noise value" << noise;
     
-    float dx;
+    float dx,dy;
     glPointSize(pointSize);
     for (std::size_t y = 0; y < depthPixels.getHeight(); y++)
     {
@@ -467,11 +467,13 @@ void ofApp::createPointCloud_1(){
             //}
             // create a point in the x,y,z space
             dx = x;
+            dy = y;
             if(addNoise){
                 dx += noise;
+                dy += noise;
             } 
 
-            ofPoint point = ofPoint(dx,y,dval); 
+            ofPoint point = ofPoint(dx,dy,dval); 
         //    ofPoint point = ofPoint(x,y,dval); 
             
             //if (x%200 == 0){
@@ -484,10 +486,10 @@ void ofApp::createPointCloud_1(){
                 ofColor col;
                 if(!showRGB){
                     if(colToDepth){
-                        col.setHsb(ofMap(dval,nearclip,farclip,0,255) + noise,255,255);
+                        col.setHsb(ofMap(dval,nearclip,farclip,0,255) ,255,255);
                     }
                     else{
-                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax)+ noise,255,255);
+                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
                     }
 
                 }
