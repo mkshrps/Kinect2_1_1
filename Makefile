@@ -38,12 +38,10 @@ copy_ni_libs:
 
 	#cp -R ../../../addons/ofxNI2/libs/NiTE2/lib/osx/libNiTE2.dylib $(TARGET_BUILD_DIR)/$(PRODUCT_NAME).app/Contents/MacOS/libNiTE2.dylib
 
-# build copy nilibs and run app
+# build, copy nilibs and run app
 copyrun:
-	make -j -s 2>&1 && make Release && make copy_ni_libs && cd bin/$(PRODUCT_NAME).app/Contents/MacOS/ && ./$(PRODUCT_NAME)
+	#make -j -s 2>&1 && make Release && make copy_ni_libs && cd bin/$(PRODUCT_NAME).app/Contents/MacOS/ && ./$(PRODUCT_NAME)
+	make -j -s 2>&1 && make copy_ni_libs && cd bin/$(PRODUCT_NAME).app/Contents/MacOS/ && ./$(PRODUCT_NAME)
 
 runonly: 
 	cd bin/$(PRODUCT_NAME).app/Contents/MacOS/ && ./$(PRODUCT_NAME)
-
-	
-

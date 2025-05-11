@@ -32,16 +32,16 @@ void ofApp::setup()
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",3,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
-    paramGroup.add(farclip.setup("far clip",2000,1000,15000));
+    paramGroup.add(farclip.setup("far clip",4000,1000,15000));
     paramGroup.add(colMin.setup("color min",0,0,240));
     paramGroup.add(colMax.setup("col max",255,10,255));
     paramGroup.add(colToDepth.setup("color compress" , false));
     paramGroup.add(ghosts.setup("Ghosting",0,0,5)); 
     paramGroup.add(invert.setup("invert" , false));
-    paramGroup.add(getFullDepthRange.setup("Max Depth Range" , true));
+    paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
     paramGroup.add(showRGB.setup("show rgb",false));
    // paramGroup.add(enableRgbRegistered.setup("show registered",false));
-
+    
     //paramGroup.add(dpHeight.set("dpHeight",480));
     //paramGroup.add(dpWidth.set("dpWidth",640));
 
@@ -54,8 +54,12 @@ void ofApp::setup()
     panel.add(&recGroup);
 
     panel.loadFromFile("settings.xml");
+    // force depthrange off for first screen
+    getFullDepthRange = false;
 //  edit this when playing back a recorded file
     liveDevice = true;
+    liveDevice = false;
+
    
 
     if(liveDevice){
@@ -80,9 +84,13 @@ void ofApp::setup()
     }
     else{
             playbackDevice.setLogLevel(OF_LOG_NOTICE);
-            playbackDevice.setup("record2.oni");
+            playbackDevice.setup("K2File.oni");
             depth.setup(playbackDevice);
+            depth.setFps(60);
             depth.start();
+///            openni::Device & dev = playbackDevice.get();
+//            int framecount = dev.getPlaybackControl()->getNumberOfFrames(depth);
+//            cout << "framecount" << framecount << endl;
     } 
 
     /******************************************* */
@@ -97,6 +105,7 @@ void ofApp::setup()
     drawCounter		= 0;
     smoothedVol     = 0.0;
     scaledVol		= 0.0;
+
 
     ofSoundStreamSettings settings;
     
@@ -217,14 +226,14 @@ void ofApp::update()
         }
     } 
     else {
-        framecount++;
-        openni::Device & dev = playbackDevice.get();
-        if(framecount > dev.getPlaybackControl()->getNumberOfFrames(depth) - 10){
-        dev.getPlaybackControl()->seek(depth,1);
-        cout << "reset framecount" << framecount << endl;
-        framecount = 0;
         playbackDevice.update();
-        }
+        framecount++;
+        //openni::Device & dev = playbackDevice.get();
+        //if(framecount > dev.getPlaybackControl()->getNumberOfFrames(depth) - 2){
+        //dev.getPlaybackControl()->seek(depth,1);
+        //cout << "reset framecount" << framecount << endl;
+        //framecount = 0;
+        //}
     }
     // process depth frame same for live or recorded device
     if(depth.isFrameNew()){
@@ -468,6 +477,7 @@ void ofApp::createPointCloud_1(){
             // create a point in the x,y,z space
             dx = x;
             dy = y;
+
             if(addNoise){
                 dx += noise;
                 dy += noise;
@@ -567,7 +577,12 @@ void ofApp::keyPressed(int key)
 {
     if (key == 'p')
     {
+        getFullDepthRange = true;
+        if(showPointCloud){
+            getFullDepthRange = false;
+        }
         showPointCloud = !showPointCloud;
+            
     }
     if (key == 'd')
     {
