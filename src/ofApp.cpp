@@ -58,7 +58,7 @@ void ofApp::setup()
     getFullDepthRange = false;
 //  edit this when playing back a recorded file
     liveDevice = true;
-    liveDevice = false;
+//    liveDevice = false;
 
    
 
