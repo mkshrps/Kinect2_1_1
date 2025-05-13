@@ -41,7 +41,7 @@ public:
     
     ofxNI2::Device device;              // Live Kinect device
     ofxNI2::Device playbackDevice;       // Playback Device
-    //openni::Device& dev = playbackDevice.operator openni::Device &(); 
+    
     ofxNiTE2::UserTracker tracker;
     ofPixels_<unsigned short> depthPixels;
     ofTexture rgbTex;
@@ -123,7 +123,7 @@ public:
     float scaledVol;
     
     ofSoundStream soundStream;
-
+    float oldTime;
 
 
 };

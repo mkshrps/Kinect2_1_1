@@ -58,9 +58,8 @@ void ofApp::setup()
     getFullDepthRange = false;
 //  edit this when playing back a recorded file
     liveDevice = true;
-//    liveDevice = false;
+    liveDevice = false;
 
-   
 
     if(liveDevice){
 	    device.setLogLevel(OF_LOG_NOTICE);
@@ -82,15 +81,37 @@ void ofApp::setup()
             rgbStream.start();
         }
     }
+    // playback from file
     else{
-            playbackDevice.setLogLevel(OF_LOG_NOTICE);
-            playbackDevice.setup("K2File.oni");
-            depth.setup(playbackDevice);
-            depth.setFps(60);
-            depth.start();
-///            openni::Device & dev = playbackDevice.get();
-//            int framecount = dev.getPlaybackControl()->getNumberOfFrames(depth);
-//            cout << "framecount" << framecount << endl;
+            
+        playbackDevice.setLogLevel(OF_LOG_NOTICE);
+        playbackDevice.setup("K2File.oni");
+        depth.setup(playbackDevice);
+        depth.setFps(30);
+        depth.start();
+        
+        
+        openni::Device &onidev = playbackDevice.get(); // = playbackDevice.get();
+        openni::PlaybackControl *pb = onidev.getPlaybackControl();
+                    
+        playbackDevice.update();
+        
+        if (pb->isValid()){
+            cout << "PB valid " << endl;
+        }
+        else{
+            cout << "PB not valid " << endl;
+        }
+
+        cout << "file y/n" << onidev.isFile() << endl;
+        //openni::VideoStream &v = depth.get();
+        oldTime = ofGetElapsedTimef();
+        // this next line seems to always return -1
+        int frames =  pb->getNumberOfFrames(depth);
+        // debug only
+        //pb->setSpeed(2.0);
+        cout << "playback frame count -------------------  " << frames << endl;
+        cout << "pb speed --------------------  " << pb->getSpeed() << endl;
     } 
 
     /******************************************* */
@@ -138,16 +159,14 @@ void ofApp::setup()
     soundStream.setup(settings);
 
     /**************************************************** */   
-
-
   
     //    tracker.setup(device);
     framecount = 0;
     resetCamPos();
 
-// cam.setGlobalPosition(200,-300,-1500);
+    // cam.setGlobalPosition(200,-300,-1500);
 
-//    cam.lookAt(ofVec3f(200,-300,0.0));
+    //    cam.lookAt(ofVec3f(200,-300,0.0));
     //cam.setTarget(ofVec3f(0.0,0.0,0.0));
 
     depthCamView = true;
@@ -226,14 +245,32 @@ void ofApp::update()
         }
     } 
     else {
+        openni::Device &onidev = playbackDevice.get(); // = playbackDevice.get();
+        openni::PlaybackControl *pb = onidev.getPlaybackControl();
+
         playbackDevice.update();
-        framecount++;
-        //openni::Device & dev = playbackDevice.get();
-        //if(framecount > dev.getPlaybackControl()->getNumberOfFrames(depth) - 2){
-        //dev.getPlaybackControl()->seek(depth,1);
-        //cout << "reset framecount" << framecount << endl;
-        //framecount = 0;
-        //}
+        if(depth.isFrameNew()){
+            oldTime = ofGetElapsedTimef();
+            framecount++;
+           //openni::Device & dev = playbackDevice.get();
+            //cout << "frames" << pb->getNumberOfFrames(depth) << "framecount" << framecount << endl;
+            /*
+            if(framecount == 100){
+            //if(framecount > onidev.getPlaybackControl()->getNumberOfFrames(depth) - 2){
+           }
+        */
+            }
+            else{
+                // no frames for over 1 second
+                if(ofGetElapsedTimef() - oldTime > 1.0){
+                // reset to start of file
+                onidev.getPlaybackControl()->seek(depth,1);
+                cout << "reset framecount" << framecount << endl;
+                framecount = 0;
+ 
+                }
+            }
+
     }
     // process depth frame same for live or recorded device
     if(depth.isFrameNew()){
@@ -601,6 +638,17 @@ void ofApp::keyPressed(int key)
         device.stopRecord();
     }
 
+    if(key == 'f'){
+            openni::Device &onidev = playbackDevice.get();
+            openni::PlaybackControl pb = *onidev.getPlaybackControl();
+            //openni::Device &dev = onidev();
+
+
+            cout << "file y/n" << (onidev.isFile()? "Y" : "n") << endl;
+
+            cout << "playback frame count -------------------" << pb.getNumberOfFrames(depth) << endl;
+
+    }
     if (key == 'm'){
         openni::Device & dev = playbackDevice.get();
         dev.getPlaybackControl()->seek(depth,1);
