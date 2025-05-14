@@ -114,7 +114,7 @@ namespace audioStreamer
         smoothedVol *= 0.93;
         smoothedVol += 0.07 * curVol;
        // volume_l = smoothedVol * 100;
-        cout << "smoothed" << smoothedVol << endl;
+        //cout << "smoothed" << smoothedVol << endl;
         bufferCounter++;
         
     }

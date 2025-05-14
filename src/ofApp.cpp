@@ -237,8 +237,7 @@ void ofApp::update()
 	}
 */
     audioDev.update();
-    //volume_l = audioDev.getSmoothedVol()*500;
-    volume_l = 100.0;
+    volume_l = audioDev.getSmoothedVol()*500;
 
     // update the gui camera settings 
     cam_x = cam.getX();
