@@ -3,6 +3,7 @@
 #include "ofxNI2.h"
 #include "ofxNiTE2.h"
 #include "ofxGui.h"
+#include "audioStreamer.h"
 
 class ofApp : public ofBaseApp
 {
@@ -27,7 +28,7 @@ public:
 	void createPointCloud_1();
     bool startRecord(string filename, bool allowLossyCompression, ofxNI2::DepthStream& stream);
     void drawSkeleton();
-    void audioIn(ofSoundBuffer & input);
+    //void audioIn(ofSoundBuffer & input);
     void drawSound();
 
     void resetCamPos();
@@ -112,18 +113,19 @@ public:
    bool drawSoundEnabled;
 
 	
-    vector <float> left;
-    vector <float> right;
-    vector <float> volHistory;
-    
+//    vector <float> left;
+//    vector <float> right;
+//    vector <float> volHistory;
+//    
     int 	bufferCounter;
     int 	drawCounter;
     
-    float smoothedVol;
-    float scaledVol;
+//   float smoothedVol;
+//    float scaledVol;
     
-    ofSoundStream soundStream;
+//    ofSoundStream soundStream;
     float oldTime;
 
+    audioStreamer::audioDevice audioDev;
 
 };

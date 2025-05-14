@@ -22,7 +22,7 @@ void ofApp::setup()
     camGroup.add(cam_z);
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
     soundGroup.setup("Audio");
-    soundGroup.add(volume_l.setup("vol L",0,0,10000));
+    soundGroup.add(volume_l.setup("vol L",0,0,1000));
     soundGroup.add(volume_r.setup("vol R",0,0,10000));
     soundGroup.add(gain.setup("Gain",10,0,100));
     soundGroup.add(noiseGain.setup("Gain",0,0,10));
@@ -116,23 +116,23 @@ void ofApp::setup()
 
     /******************************************* */
     // add sound initialistion
-    soundStream.printDeviceList();
-    int bufferSize = 256;
-    left.assign(bufferSize, 0.0);
-    right.assign(bufferSize, 0.0);
-    volHistory.assign(400, 0.0);
+    //soundStream.printDeviceList();
+    //int bufferSize = 256;
+    //left.assign(bufferSize, 0.0);
+    //right.assign(bufferSize, 0.0);
+    //volHistory.assign(400, 0.0);
     
-    bufferCounter	= 0;
-    drawCounter		= 0;
-    smoothedVol     = 0.0;
-    scaledVol		= 0.0;
+//    bufferCounter	= 0;
+//    drawCounter		= 0;
+//    smoothedVol     = 0.0;
+//    scaledVol		= 0.0;
 
 
-    ofSoundStreamSettings settings;
+//    ofSoundStreamSettings settings;
     
     // if you want to set the device id to be different than the default
-    auto devices = soundStream.getDeviceList();
-    settings.setInDevice(devices[0]);
+//    auto devices = soundStream.getDeviceList();
+//    settings.setInDevice(devices[0]);
 
 	// you can also get devices for an specific api
 	// auto devices = soundStream.getDevicesByApi(ofSoundDevice::Api::PULSE);
@@ -147,16 +147,19 @@ void ofApp::setup()
     //		settings.setInDevice(devices[0]);
     //	}
 
-    settings.setInListener(this);
-    settings.sampleRate = 44100;
-    #ifdef TARGET_EMSCRIPTEN
-        settings.numOutputChannels = 2;
-    #else
-        settings.numOutputChannels = 0;
-    #endif
-    settings.numInputChannels = 2;
-    settings.bufferSize = bufferSize;
-    soundStream.setup(settings);
+//    settings.setInListener(this);
+//    settings.sampleRate = 44100;
+//    #ifdef TARGET_EMSCRIPTEN
+//        settings.numOutputChannels = 2;
+//    #else
+//        settings.numOutputChannels = 0;
+//    #endif
+//    settings.numInputChannels = 2;
+ //   settings.bufferSize = bufferSize;
+  //  soundStream.setup(settings);
+    audioDev.printDeviceList();
+    int device = 0; 
+    audioDev.setup(0);
 
     /**************************************************** */   
   
@@ -185,7 +188,8 @@ void ofApp::exit()
 }
 
 //--------------------------------------------------------------
-void ofApp::audioIn(ofSoundBuffer & input){
+/*
+void ofApp::audioInOld(ofSoundBuffer & input){
 	
 	float curVol = 0.0;
 	
@@ -210,16 +214,17 @@ void ofApp::audioIn(ofSoundBuffer & input){
 	
 	smoothedVol *= 0.93;
 	smoothedVol += 0.07 * curVol;
-    volume_l = smoothedVol * 100;
+   // volume_l = smoothedVol * 100;
     
 	bufferCounter++;
 	
 }
-
+*/
 //--------------------------------------------------------------
 void ofApp::update()
 {
-	//lets scale the vol up to a 0-1 range 
+	/*
+    //lets scale the vol up to a 0-1 range 
 	scaledVol = ofMap(smoothedVol, 0.0, 0.17, 0.0, 1.0, true);
     volume_r = scaledVol;
 
@@ -230,7 +235,10 @@ void ofApp::update()
 	if( volHistory.size() >= 400 ){
 		volHistory.erase(volHistory.begin(), volHistory.begin()+1);
 	}
-
+*/
+    audioDev.update();
+    //volume_l = audioDev.getSmoothedVol()*500;
+    volume_l = 100.0;
 
     // update the gui camera settings 
     cam_x = cam.getX();
@@ -322,8 +330,8 @@ void ofApp::drawSound(){
 		ofSetLineWidth(3);
 					
 			ofBeginShape();
-			for (unsigned int i = 0; i < left.size(); i++){
-				ofVertex(i*2, 100 -left[i]*180.0f);
+			for (unsigned int i = 0; i < audioDev.getLeftChannel().size(); i++){
+				ofVertex(i*2, 100 - audioDev.getLeftChannel()[i]*180.0f);
 			}
 			ofEndShape(false);
 			
@@ -345,8 +353,8 @@ void ofApp::drawSound(){
 		ofSetLineWidth(3);
 					
 			ofBeginShape();
-			for (unsigned int i = 0; i < right.size(); i++){
-				ofVertex(i*2, 100 -right[i]*180.0f);
+			for (unsigned int i = 0; i < audioDev.getRightChannel().size(); i++){
+				ofVertex(i*2, 100 -audioDev.getRightChannel()[i]*180.0f);
 			}
 			ofEndShape(false);
 			
@@ -359,21 +367,21 @@ void ofApp::drawSound(){
 		ofTranslate(565, 170, 0);
 			
 		ofSetColor(225);
-		ofDrawBitmapString("Scaled average vol (0-100): " + ofToString(scaledVol * 100.0, 0), 4, 18);
+		ofDrawBitmapString("Scaled average vol (0-100): " + ofToString(audioDev.getScaledVol() * 100.0, 0), 4, 18);
 		ofDrawRectangle(0, 0, 400, 400);
 		
 		ofSetColor(245, 58, 135);
 		ofFill();		
-		ofDrawCircle(200, 200, scaledVol * 190.0f);
+		ofDrawCircle(200, 200, audioDev.getScaledVol() * 190.0f);
 		
 		//lets draw the volume history as a graph
 		ofBeginShape();
-		for (unsigned int i = 0; i < volHistory.size(); i++){
+		for (unsigned int i = 0; i < audioDev.getHistory().size(); i++){
 			if( i == 0 ) ofVertex(i, 400);
 
-			ofVertex(i, 400 - volHistory[i] * 70);
+			ofVertex(i, 400 - audioDev.getHistory()[i] * 70);
 			
-			if( i == volHistory.size() -1 ) ofVertex(i, 400);
+			if( i == audioDev.getHistory().size() -1 ) ofVertex(i, 400);
 		}
 		ofEndShape(false);		
 			
@@ -383,7 +391,7 @@ void ofApp::drawSound(){
 	drawCounter++;
 	
 	ofSetColor(225);
-	string reportString = "buffers received: "+ofToString(bufferCounter)+"\ndraw routines called: "+ofToString(drawCounter)+"\nticks: " + ofToString(soundStream.getTickCount());
+	string reportString = "ScaledVol: "+ofToString(audioDev.getScaledVol())+"\nsmoothedVol: "+ofToString(audioDev.getSmoothedVol())+"\nticks: " + ofToString(audioDev.getStream().getTickCount());
 	ofDrawBitmapString(reportString, 32, 589);
 		
 }
@@ -717,7 +725,8 @@ void ofApp::keyPressed(int key)
 	}
 	
 	if( key == 'e' ){
-		soundStream.stop();
+		
+        audioDev.stop();
         drawSoundEnabled = false;
 	}     
 }
