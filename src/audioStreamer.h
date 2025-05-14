@@ -44,8 +44,8 @@ private:
     int     deviceID;
     int 	bufferCounter;
     int 	drawCounter;
-    int bufferSize;
-    int historySize;
+    int bufferSize = 256;
+    int historySize = 400;
 
     float smoothedVol;
     float scaledVol;

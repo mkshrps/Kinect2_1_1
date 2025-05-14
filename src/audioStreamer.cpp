@@ -21,27 +21,25 @@ namespace audioStreamer
     bool audioDevice::init(){    
         leftChan.assign(bufferSize, 0.0);
         rightChan.assign(bufferSize, 0.0);
-        volHistory.assign(400, 0.0);
+        volHistory.assign(historySize, 0.0);
         
         bufferCounter	= 0;
         drawCounter		= 0;
         smoothedVol     = 0.0;
         scaledVol		= 0.0;
         auto devices = soundStream.getDeviceList();
+        
         settings.setInDevice(devices[deviceID]);
         settings.setInListener(this);
         settings.sampleRate = 44100;
-     
-        settings.numOutputChannels = 0;
-        settings.numInputChannels = 2;
+        settings.numOutputChannels = devices[deviceID].outputChannels;
+        settings.numInputChannels = devices[deviceID].inputChannels;
         settings.bufferSize = bufferSize;
-        soundStream.setup(settings);
-        return true;
+        return soundStream.setup(settings);
     }
     
     void audioDevice::exit(){
         soundStream.close();
-
     }
 
     void audioDevice::start(){
@@ -67,14 +65,15 @@ namespace audioStreamer
     float audioDevice::getScaledVol(){
         return scaledVol;
     }
+
     float audioDevice::getSmoothedVol(){
         return smoothedVol;
     }
-    
 
     int audioDevice::getBufferCounter(){
         return bufferCounter;
     }
+
     bool audioDevice::setup(){
         deviceID = 0; // setup default dev ID
         return init();
@@ -129,7 +128,7 @@ namespace audioStreamer
         volHistory.push_back( scaledVol );
         
         //if we are bigger the the size we want to record - lets drop the oldest value
-        if( volHistory.size() >= 400 ){
+        if( volHistory.size() >= historySize ){
             volHistory.erase(volHistory.begin(), volHistory.begin()+1);
         }
 
