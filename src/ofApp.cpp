@@ -58,13 +58,14 @@ void ofApp::setup()
     getFullDepthRange = false;
 //  edit this when playing back a recorded file
     liveDevice = true;
-    liveDevice = false;
+    //liveDevice = false;
 
 
     if(liveDevice){
 	    device.setLogLevel(OF_LOG_NOTICE);
         device.setup();
         device.setEnableRegistration();
+        tracker.setup(device);        
         cout << "registration support" << device.getEnableRegistration() << endl;
         depth.setup(device);      
         depth.setFps(30);
@@ -114,56 +115,9 @@ void ofApp::setup()
         cout << "pb speed --------------------  " << pb->getSpeed() << endl;
     } 
 
-    /******************************************* */
-    // add sound initialistion
-    //soundStream.printDeviceList();
-    //int bufferSize = 256;
-    //left.assign(bufferSize, 0.0);
-    //right.assign(bufferSize, 0.0);
-    //volHistory.assign(400, 0.0);
-    
-//    bufferCounter	= 0;
-//    drawCounter		= 0;
-//    smoothedVol     = 0.0;
-//    scaledVol		= 0.0;
-
-
-//    ofSoundStreamSettings settings;
-    
-    // if you want to set the device id to be different than the default
-//    auto devices = soundStream.getDeviceList();
-//    settings.setInDevice(devices[0]);
-
-	// you can also get devices for an specific api
-	// auto devices = soundStream.getDevicesByApi(ofSoundDevice::Api::PULSE);
-	// settings.device = devices[0];
-
-	// or get the default device for an specific api:
-	// settings.api = ofSoundDevice::Api::PULSE;
-
-	// or by name
-    //	auto devices = soundStream.getMatchingDevices("default");
-    //	if(!devices.empty()){
-    //		settings.setInDevice(devices[0]);
-    //	}
-
-//    settings.setInListener(this);
-//    settings.sampleRate = 44100;
-//    #ifdef TARGET_EMSCRIPTEN
-//        settings.numOutputChannels = 2;
-//    #else
-//        settings.numOutputChannels = 0;
-//    #endif
-//    settings.numInputChannels = 2;
- //   settings.bufferSize = bufferSize;
-  //  soundStream.setup(settings);
     audioDev.printDeviceList();
     int device = 0; 
     audioDev.setup(0);
-
-    /**************************************************** */   
-  
-    //    tracker.setup(device);
     framecount = 0;
     resetCamPos();
 
@@ -182,60 +136,15 @@ void ofApp::setup()
 
 void ofApp::exit()
 {
-   // tracker.exit();
-   // device.exit();
-    playbackDevice.exit();
+   tracker.exit();
+   device.exit();
+   // playbackDevice.exit();
 }
 
-//--------------------------------------------------------------
-/*
-void ofApp::audioInOld(ofSoundBuffer & input){
-	
-	float curVol = 0.0;
-	
-	// samples are "interleaved"
-	int numCounted = 0;	
 
-	//lets go through each sample and calculate the root mean square which is a rough way to calculate volume	
-	for (size_t i = 0; i < input.getNumFrames(); i++){
-		left[i]		= input[i*2]*0.5;
-		right[i]	= input[i*2+1]*0.5;
-
-		curVol += left[i] * left[i];
-		curVol += right[i] * right[i];
-		numCounted+=2;
-	}
-	
-	//this is how we get the mean of rms :) 
-	curVol /= (float)numCounted;
-	
-	// this is how we get the root of rms :) 
-	curVol = sqrt( curVol );
-	
-	smoothedVol *= 0.93;
-	smoothedVol += 0.07 * curVol;
-   // volume_l = smoothedVol * 100;
-    
-	bufferCounter++;
-	
-}
-*/
-//--------------------------------------------------------------
 void ofApp::update()
 {
-	/*
-    //lets scale the vol up to a 0-1 range 
-	scaledVol = ofMap(smoothedVol, 0.0, 0.17, 0.0, 1.0, true);
-    volume_r = scaledVol;
 
-	//lets record the volume into an array
-	volHistory.push_back( scaledVol );
-	
-	//if we are bigger the the size we want to record - lets drop the oldest value
-	if( volHistory.size() >= 400 ){
-		volHistory.erase(volHistory.begin(), volHistory.begin()+1);
-	}
-*/
     audioDev.update();
     volume_l = audioDev.getSmoothedVol()*500;
 
@@ -286,10 +195,12 @@ void ofApp::update()
         // default depth.getPixelsRef() returns depth in mm between 0.5 and 4.5m
         // passing near clip and far clip returns raw depth data i.e. unsigned int value between 0 - 65535
         if(getFullDepthRange){
-            depthPixels = depth.getPixelsRef(); // real world depth image
+            depthPixels = tracker.getPixelsRef();
+       //     depthPixels = depth.getPixelsRef(); // real world depth image
         }
         else{ 
-            depthPixels = depth.getPixelsRef(nearclip,farclip,invert); // access the depth data and specify near and far range for grayscale shading
+            depthPixels = tracker.getPixelsRef(nearclip,farclip,invert); // access the depth data and specify near and far range for grayscale shading
+           // depthPixels = depth.getPixelsRef(nearclip,farclip,invert); // access the depth data and specify near and far range for grayscale shading
         }
 
         depthTexture.loadData(depthPixels);
@@ -436,6 +347,35 @@ void ofApp::draw()
             depthTexture.draw(0,0,640,480);
             
         }
+        //tracker.draw();
+    // draw 3D skeleton in 2D
+        ofPushView();
+        tracker.getOverlayCamera().begin(ofRectangle(0, 0, depthTexture.getWidth(), depthTexture.getHeight()));
+        ofDrawAxis(100);
+        tracker.draw3D();
+        tracker.getOverlayCamera().end();
+        ofPopView();
+
+        // draw in 3D
+        cam.begin();
+        ofDrawAxis(100);
+        tracker.draw3D();
+
+        // draw box
+        ofNoFill();
+        ofSetColor(255, 0, 0);
+        for (int i = 0; i < tracker.getNumUser(); i++)
+        {
+            ofxNiTE2::User::Ref user = tracker.getUser(i);
+            const ofxNiTE2::Joint &joint = user->getJoint(nite::JOINT_HEAD);
+    
+            joint.transformGL();
+            ofDrawBox(300);
+            joint.restoreTransformGL();
+        }
+
+        cam.end();
+    
     }
         ofSetColor(255,255,255);
     //    ofPushMatrix();

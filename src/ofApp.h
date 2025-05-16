@@ -110,7 +110,7 @@ public:
     float rgb_w,rgb_h;
     int dfar;
 
-   bool drawSoundEnabled;
+    bool drawSoundEnabled;
 
 	
 //    vector <float> left;
