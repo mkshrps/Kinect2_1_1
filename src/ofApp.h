@@ -36,6 +36,7 @@ public:
     bool showGui;
     bool recording;
     bool depthCamView;
+    bool skellyPage = false;        // experimental to display tracking skelly
     ofxNI2::ColorStream rgbStream;
     ofxNI2::DepthStream depth;
     ofSpherePrimitive originSphere;
@@ -44,6 +45,7 @@ public:
     ofxNI2::Device playbackDevice;       // Playback Device
     
     ofxNiTE2::UserTracker tracker;
+    ofPoint head;
     ofPixels_<unsigned short> depthPixels;
     ofTexture rgbTex;
     
@@ -74,8 +76,11 @@ public:
 
     ofxFloatSlider volume_l;
     ofxFloatSlider volume_r;
-    ofxFloatSlider   gain;
-    ofxFloatSlider   noiseGain;
+    ofxFloatSlider   gain;          // audio vol gain
+    ofxFloatSlider   noiseGain;     // visual noise gain
+    
+    // tracker controls
+    ofxFloatSlider   smoothing;
 
     ofxToggle addNoise;
     ofxToggle addSound;
@@ -86,6 +91,9 @@ public:
     ofxGuiGroup recGroup;
     ofxGuiGroup camGroup;
     ofxGuiGroup paramGroup;
+    ofxGuiGroup trackerGroup;
+
+
     ofxGuiGroup soundGroup;
 
     ofParameter<bool> recordStatus;
@@ -127,5 +135,5 @@ public:
     float oldTime;
 
     audioStreamer::audioDevice audioDev;
-
+    int page = 0;
 };

@@ -21,14 +21,6 @@ void ofApp::setup()
     camGroup.add(cam_y);
     camGroup.add(cam_z);
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
-    soundGroup.setup("Audio");
-    soundGroup.add(volume_l.setup("vol L",0,0,1000));
-    soundGroup.add(volume_r.setup("vol R",0,0,10000));
-    soundGroup.add(gain.setup("Gain",10,0,100));
-    soundGroup.add(noiseGain.setup("Gain",0,0,10));
-    soundGroup.add(addNoise.setup("Noise",false));
-    soundGroup.add(addSound.setup("Sound",false));
-
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",3,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
@@ -40,7 +32,17 @@ void ofApp::setup()
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
     paramGroup.add(showRGB.setup("show rgb",false));
+    trackerGroup.setup("Tracker");
+    trackerGroup.add(smoothing.setup("smoothing", 0.0,0.0,1.0));
    // paramGroup.add(enableRgbRegistered.setup("show registered",false));
+    soundGroup.setup("Audio");
+    soundGroup.add(volume_l.setup("vol L",0,0,1000));
+    soundGroup.add(volume_r.setup("vol R",0,0,10000));
+    soundGroup.add(gain.setup("Gain",10,0,100));
+    soundGroup.add(noiseGain.setup("Gain",0,0,10));
+    soundGroup.add(addNoise.setup("Noise",false));
+    soundGroup.add(addSound.setup("Sound",false));
+
     
     //paramGroup.add(dpHeight.set("dpHeight",480));
     //paramGroup.add(dpWidth.set("dpWidth",640));
@@ -48,10 +50,11 @@ void ofApp::setup()
     //    mixerGroup.add( kenabled.setup( "kenabled", true ) );
     recGroup.setup("Depth Recording Status");
     recGroup.add( recordStatus.set( "recording", false ) );
+    panel.add(&paramGroup);
+    panel.add(&trackerGroup);
+    panel.add(&recGroup);
     panel.add(&camGroup);
     panel.add(&soundGroup);
-    panel.add(&paramGroup);
-    panel.add(&recGroup);
 
     panel.loadFromFile("settings.xml");
     // force depthrange off for first screen
@@ -59,14 +62,15 @@ void ofApp::setup()
 //  edit this when playing back a recorded file
     liveDevice = true;
     //liveDevice = false;
-
+    
+    skellyPage = false;
 
     if(liveDevice){
 	    device.setLogLevel(OF_LOG_NOTICE);
         device.setup();
         device.setEnableRegistration();
         tracker.setup(device);        
-        cout << "registration support" << device.getEnableRegistration() << endl;
+        //cout << "registration support" << device.getEnableRegistration() << endl;
         depth.setup(device);      
         depth.setFps(30);
 		depth.start();
@@ -97,22 +101,12 @@ void ofApp::setup()
                     
         playbackDevice.update();
         
-        if (pb->isValid()){
-            cout << "PB valid " << endl;
-        }
-        else{
-            cout << "PB not valid " << endl;
-        }
-
-        cout << "file y/n" << onidev.isFile() << endl;
-        //openni::VideoStream &v = depth.get();
+       //openni::VideoStream &v = depth.get();
         oldTime = ofGetElapsedTimef();
         // this next line seems to always return -1
         int frames =  pb->getNumberOfFrames(depth);
         // debug only
         //pb->setSpeed(2.0);
-        cout << "playback frame count -------------------  " << frames << endl;
-        cout << "pb speed --------------------  " << pb->getSpeed() << endl;
     } 
 
     audioDev.printDeviceList();
@@ -314,78 +308,45 @@ void ofApp::draw()
     //depthPixels = tracker.getPixelsRef(1000, 4000);
 //    depthPixels = depth.getPixelsRef(300,10000,false);
 //    depthTexture.loadData(depthPixels,GL_RGBA);
-    if(drawSoundEnabled){
-        drawSound();
-    }
-
-    else{
-    if(showPointCloud){
-       
-    
-        drawPointCloud();
-
-        ofSetColor(255,255,255);
-        cam.begin();
-        ofEnableDepthTest();
-        
-        originSphere.setPosition(0,0,0);
-        originSphere.setRadius(2);
-        originSphere.draw();    
-        ofDisableDepthTest();
-        cam.end();
-    } 
-    else
-    {
+    // draw sound monitor page for now
+    switch (page){
+        case 0:
         if(liveDevice){
-            
-            rgbStream.draw(640,0,rgbStream.getWidth(),rgbStream.getHeight());
-//            depthTexture.draw(0,0,640,480);
+                rgbStream.draw(640,0,rgbStream.getWidth(),rgbStream.getHeight());
         }
 
         // depth texture is allocated automagically when the first Depth frame is updated
         if(depthTexture.isAllocated()){
-            depthTexture.draw(0,0,640,480);
-            
+                depthTexture.draw(0,0,640,480);
         }
-        //tracker.draw();
-    // draw 3D skeleton in 2D
-        ofPushView();
-        tracker.getOverlayCamera().begin(ofRectangle(0, 0, depthTexture.getWidth(), depthTexture.getHeight()));
-        ofDrawAxis(100);
-        tracker.draw3D();
-        tracker.getOverlayCamera().end();
-        ofPopView();
+        break;
 
-        // draw in 3D
-        cam.begin();
-        ofDrawAxis(100);
-        tracker.draw3D();
-
-        // draw box
-        ofNoFill();
-        ofSetColor(255, 0, 0);
-        for (int i = 0; i < tracker.getNumUser(); i++)
-        {
-            ofxNiTE2::User::Ref user = tracker.getUser(i);
-            const ofxNiTE2::Joint &joint = user->getJoint(nite::JOINT_HEAD);
-    
-            joint.transformGL();
-            ofDrawBox(300);
-            joint.restoreTransformGL();
-        }
-
-        cam.end();
-    
-    }
+        case 1:
+        drawPointCloud();
         ofSetColor(255,255,255);
+        break;
+
+        case 2:
+        drawSkeleton();
+        break;
+
+        case 3:
+        drawSound();
+        break;
+
+        default:
+        page = 0;
+
+    }
     //    ofPushMatrix();
-        ofDrawBitmapString("Depth xy "+ofToString(mouseDepth),ofGetMouseX(),ofGetMouseY());
+    //    ofDrawBitmapString("Depth xy "+ofToString(mouseDepth),ofGetMouseX(),ofGetMouseY());
     //    ofPopMatrix();
  
     if(showGui){
         panel.draw();
     }
     
+    // do some footer debug stuff
     //ofDrawBitmapString("Tracker FPS: "+ofToString(tracker.getFrameRate()),20,ofGetHeight()-40);
     //ofDrawBitmapString("Depth size: "+ofToString(depth.getPixelsRef().getWidth())+" "+ofToString(depth.getPixelsRef().getHeight()),20,ofGetHeight()-40);
     const ofNode &target = cam.getTarget();
@@ -394,7 +355,10 @@ void ofApp::draw()
     float dirZ = target.getZ();
 
     stringstream ss;
-    ofDrawBitmapString("cam heading "+ofToString(cam.getHeading())+"Target X,Y,Z "+ofToString(dirX)+" "+ofToString(dirY)+" "+ofToString(dirZ),20,ofGetHeight()-60);
+    
+    ofDrawBitmapString("head pos x,y,z "+ofToString(head.x)+" "+ofToString(head.y)+" "+ofToString(head.z),20,ofGetHeight()-60);
+    //ofDrawBitmapString("users tracked "+ofToString(tracker.getNumUser()),20,ofGetHeight()-100);
+    //ofDrawBitmapString("cam heading "+ofToString(cam.getHeading())+"Target X,Y,Z "+ofToString(dirX)+" "+ofToString(dirY)+" "+ofToString(dirZ),20,ofGetHeight()-60);
     ofDrawBitmapString("Depth size: "+ofToString(depthPixels.getWidth())+" "+ofToString(depthPixels.getHeight()),20,ofGetHeight()-40);
     ofDrawBitmapString("Application FPS: "+ofToString(ofGetFrameRate()),20,ofGetHeight()-20);
     if(!depthCamView){
@@ -404,7 +368,51 @@ void ofApp::draw()
         ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-80);
     }
 }
-}
+
+
+void ofApp::drawSkeleton(){
+       // tracker.draw();
+    // draw 3D skeleton in 2D
+        //ofPushView();
+        //tracker.getOverlayCamera().begin(ofRectangle(0, 0, depthTexture.getWidth(), depthTexture.getHeight()));
+    
+    //    tracker.getOverlayCamera().begin(ofRectangle(0,0,cam.screenToWorld(depthTexture.getWidth()));
+    //    ofDrawAxis(100);
+    //    tracker.draw3D();
+    //    tracker.getOverlayCamera().end();
+        //ofPopView();
+
+        // draw in 3D
+        //cam.begin();
+        ofPushMatrix();
+        ofScale(1,-1,1);
+        ofDrawAxis(100);
+        tracker.draw3D();
+        tracker.setSkeletonSmoothingFactor(smoothing);
+        // draw box
+        
+        ofNoFill();
+        //ofSetColor(255, 0, 0);
+        for (int i = 0; i < tracker.getNumUser(); i++)
+        {
+            ofxNiTE2::User::Ref user = tracker.getUser(i);
+            const ofxNiTE2::Joint &joint = user->getJoint(nite::JOINT_HEAD);
+            //joint.getPosition();
+//            head = joint.getGlobalPosition();
+            head =   joint.getPosition();
+
+            //cam.worldToCamera(head);
+            cam.lookAt(head);
+            joint.transformGL();
+            ofDrawBox(300);
+            //cam.lookAt(joint.getGlobalPosition());
+            joint.restoreTransformGL();
+        }
+        ofPopMatrix();
+
+       // cam.end();
+    } 
+
 
 void testDepthValues(){
 
@@ -505,8 +513,6 @@ void ofApp::drawPointCloud(){
     ofEnableDepthTest();
     cam.begin();
     ofPushMatrix();
-    
-
 
     //ofScale(1, 1, 1);
     ofScale(1, -1, 1);
@@ -514,14 +520,13 @@ void ofApp::drawPointCloud(){
     int blur  = ghosts;
 
     for(int i =0; i<blur; i++){
-
-    
-    ofPushMatrix();
-    ofTranslate(10 + i*i,10+i*i,0);
-        pointCloud.drawVertices();
-    ofPopMatrix();
+        ofPushMatrix();
+            ofTranslate(10 + i*i,10+i*i,0);
+            pointCloud.drawVertices();
+        ofPopMatrix();
     }
 
+    //drawSkeleton();
     ofPopMatrix();
     cam.end();
     ofDisableDepthTest();
@@ -559,32 +564,28 @@ bool ofApp::startRecord(string filename, bool allowLossyCompression, ofxNI2::Dep
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
-    if (key == 'p')
-    {
-        getFullDepthRange = true;
-        if(showPointCloud){
-            getFullDepthRange = false;
+    // a - audio on
+    if( key == 'a' ){
+		//soundStream.start();
+        page = 0;
+        drawSoundEnabled = !drawSoundEnabled;
+        if (drawSoundEnabled){
+            page = 3;
         }
-        showPointCloud = !showPointCloud;
-            
-    }
-    if (key == 'd')
-    {
-        cout << "bytes per pixel" <<  depth.getPixelsRef().getBytesPerPixel() << endl;
-    }
-    if (key == 'r'){
-        if(!recordStatus){
-        string str = "K2File_" + ofGetTimestampString() + ".oni" ;
-        startRecord(str,false,depth);
-        }
-        else device.stopRecord();
-        recordStatus = !recordStatus;
-    }
 
-    if (key == 'h'){
-        device.stopRecord();
+	}
+	// e- audio off
+	if( key == 'e' ){
+		
+        audioDev.stop();
+//        drawSoundEnabled = false;
+        
+	}     
+    
+    if(key=='c'){
+        showRGB = !showRGB;
     }
-
+    
     if(key == 'f'){
             openni::Device &onidev = playbackDevice.get();
             openni::PlaybackControl pb = *onidev.getPlaybackControl();
@@ -596,22 +597,20 @@ void ofApp::keyPressed(int key)
             cout << "playback frame count -------------------" << pb.getNumberOfFrames(depth) << endl;
 
     }
-    if (key == 'm'){
-        openni::Device & dev = playbackDevice.get();
-        dev.getPlaybackControl()->seek(depth,1);
-    }
-    if(key == 'z') showGui = !showGui;
-    
-    if(key == OF_KEY_RETURN) ofSaveScreen("screenshot" + ofToString(ofRandom(0,1000),0) + ".png");
-    
-    if(key == 's') {
-        ofFileDialogResult res;
-        res = ofSystemSaveDialog("preset.xml", "Saving Preset");
-        if(res.bSuccess) {
-            panel.saveToFile(res.filePath);
-        }
 
+
+    if (key == 'h'){
+        device.stopRecord();
     }
+
+    if (key == 'k'){
+        page = 0;
+        skellyPage = !skellyPage;
+        if(skellyPage){
+            page = 2;
+        }
+    }
+    
     if(key == 'l') {
 
         ofFileDialogResult res;
@@ -632,16 +631,52 @@ void ofApp::keyPressed(int key)
 
     }
 
-    if(key=='x'){
+ 
+    if (key == 'm'){
+        openni::Device & dev = playbackDevice.get();
+        dev.getPlaybackControl()->seek(depth,1);
+    }
+    // p - full depth range
+     if (key == 'p')
+    {
+        page = 0;
+        showPointCloud = !showPointCloud;
+        getFullDepthRange = false;
+        if(showPointCloud){
+            page = 1;
+            getFullDepthRange = true;
+        }
+            
+    }
+
+    if (key == 'r'){
+        if(!recordStatus){
+        string str = "K2File_" + ofGetTimestampString() + ".oni" ;
+        startRecord(str,false,depth);
+        }
+        else device.stopRecord();
+        recordStatus = !recordStatus;
+    }
+
+    if(key == 's') {
+        ofFileDialogResult res;
+        res = ofSystemSaveDialog("preset.xml", "Saving Preset");
+        if(res.bSuccess) {
+            panel.saveToFile(res.filePath);
+        }
+
+    }
+ 
+   if(key=='x'){
        // cam.reset();
         //cam.setGlobalPosition(200,-300,-1000);
         resetCamPos();
     }
 
-    if(key=='c'){
-        showRGB = !showRGB;
-    }
-
+   if(key == 'z') showGui = !showGui;
+    
+    if(key == OF_KEY_RETURN) ofSaveScreen("screenshot" + ofToString(ofRandom(0,1000),0) + ".png");
+    
     // these are just for messing with at the moment
     if(key=='1'){
            // cam.reset();
@@ -658,16 +693,7 @@ void ofApp::keyPressed(int key)
            depthCamView = true; 
     }
 
-    if( key == 'a' ){
-		//soundStream.start();
-        drawSoundEnabled = !drawSoundEnabled;
-	}
-	
-	if( key == 'e' ){
-		
-        audioDev.stop();
-        drawSoundEnabled = false;
-	}     
+   
 }
 
 
@@ -718,7 +744,8 @@ void ofApp::dragEvent(ofDragInfo dragInfo)
 {
     
 }
-void ofApp::drawSkeleton(){
+
+/*void ofApp::drawSkeleton(){
     //ofVec3f rhPos,lhPos;
     // draw in 2D
     //ofSetColor(0);
@@ -768,5 +795,6 @@ void ofApp::drawSkeleton(){
     }
 
     cam.end();
-*/
+
     }
+*/    
