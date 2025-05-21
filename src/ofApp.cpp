@@ -2,7 +2,6 @@
 //#define PLAYBACK
 bool liveDevice;
 
-ofEasyCam cam;
 //
 //--------------------------------------------------------------
 // todo put kinect pointcloud stuff in class
@@ -10,6 +9,9 @@ ofEasyCam cam;
 
 void ofApp::setup()
 {
+    trackerGroup.setBackgroundColor(ofColor::blue);
+    //smoothing.setBackgroundColor(ofColor::blue);
+
     ofSetFrameRate(60);
     ofSetVerticalSync(true);
     ofBackground(0);
@@ -33,8 +35,13 @@ void ofApp::setup()
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
     paramGroup.add(showRGB.setup("show rgb",false));
     trackerGroup.setup("Tracker");
-    trackerGroup.add(smoothing.setup("smoothing", 0.0,0.0,1.0));
-   // paramGroup.add(enableRgbRegistered.setup("show registered",false));
+    trackerGroup.add(smoothing.setup("smoothing", 0.0,0.9,1.0));
+    trackerGroup.add(drawDepthOnTracker.setup("show depth image",false));
+    trackerGroup.add(overlaycam_x.setup("overlay cam X",0,-1000,1000));
+    trackerGroup.add(overlaycam_y.setup("overlay cam Y",0,-1000,1000));
+    trackerGroup.add(overlaycam_z.setup("overlay cam Z",0,-1000,1000));
+
+    // paramGroup.add(enableRgbRegistered.setup("show registered",false));
     soundGroup.setup("Audio");
     soundGroup.add(volume_l.setup("vol L",0,0,1000));
     soundGroup.add(volume_r.setup("vol R",0,0,10000));
@@ -199,10 +206,10 @@ void ofApp::update()
 
         depthTexture.loadData(depthPixels);
 
-        if(showPointCloud){
+        //if(showPointCloud){
         //cout << "frame" << endl;
             createPointCloud_1();
-        }
+        //}
             //tracker.getPixelsRef()
     }
     
@@ -311,18 +318,11 @@ void ofApp::draw()
     // draw sound monitor page for now
     switch (page){
         case 0:
-        if(liveDevice){
-                rgbStream.draw(640,0,rgbStream.getWidth(),rgbStream.getHeight());
-        }
-
-        // depth texture is allocated automagically when the first Depth frame is updated
-        if(depthTexture.isAllocated()){
-                depthTexture.draw(0,0,640,480);
-        }
+        drawStartPage();
         break;
 
         case 1:
-        drawPointCloud();
+        drawPointCloud(true);   // enable camera insidde 
         ofSetColor(255,255,255);
         break;
 
@@ -369,6 +369,18 @@ void ofApp::draw()
     }
 }
 
+void ofApp::drawStartPage(){
+
+        if(liveDevice){
+                rgbStream.draw(640,0,rgbStream.getWidth(),rgbStream.getHeight());
+        }
+
+        // depth texture is allocated automagically when the first Depth frame is updated
+        if(depthTexture.isAllocated()){
+                depthTexture.draw(0,0,640,480);
+        }
+ 
+}
 
 void ofApp::drawSkeleton(){
        // tracker.draw();
@@ -385,29 +397,72 @@ void ofApp::drawSkeleton(){
         // draw in 3D
         //cam.begin();
         ofPushMatrix();
+        
+
+        //depthTexture.draw(0,0); 
+
+        if(depthTexture.isAllocated()){
+            //cout << "teture allocated" << depthTexture.getWidth() << endl;
+            if(drawDepthOnTracker){
+                depthTexture.draw((ofGetWidth()/2)-320,(ofGetHeight()/2)-240,640,480);
+            }
+        }
+        
+        ofPushMatrix();
+        ofEnableDepthTest();
+        ofSetColor(ofColor::white);
         ofScale(1,-1,1);
-        ofDrawAxis(100);
-        tracker.draw3D();
+        
+               
+        tracker.getOverlayCamera().begin(ofRectangle((ofGetWidth()/2)-320,(ofGetHeight()/2)-240, depthTexture.getWidth(), depthTexture.getHeight()));
+        
+        glm::vec3 campos = tracker.getOverlayCamera().getGlobalPosition(); 
+        overlaycam_x = campos.x;
+        overlaycam_y = campos.y;
+        overlaycam_z = campos.z;
+        //cam.begin();
+        //drawPointCloud(false);
+
+        tracker.draw3D();     // draws the skeleton
+        //tracker.draw();
         tracker.setSkeletonSmoothingFactor(smoothing);
         // draw box
         
-        ofNoFill();
-        //ofSetColor(255, 0, 0);
+        //ofNoFill();
+        ofDrawAxis(100);
+        ofSetColor(ofColor::brown);
+        box.setPosition(0,0,-1300);
+        material.setAmbientColor(ofColor::aqua);     
+        material.setMetallic(0.5);
+        material.begin();
+        box.draw();
+        material.end();
+
+        ofSetColor(255, 0, 0);
+
         for (int i = 0; i < tracker.getNumUser(); i++)
         {
             ofxNiTE2::User::Ref user = tracker.getUser(i);
+            
             const ofxNiTE2::Joint &joint = user->getJoint(nite::JOINT_HEAD);
             //joint.getPosition();
-//            head = joint.getGlobalPosition();
-            head =   joint.getPosition();
+            head = joint.getGlobalPosition();
+            //head =   joint.getPosition();
+            glm::vec3 scale(1.0,1.0,-1.0);
 
             //cam.worldToCamera(head);
-            cam.lookAt(head);
+            //cam.lookAt(head);
             joint.transformGL();
-            ofDrawBox(300);
+            ofDrawBox(100);
             //cam.lookAt(joint.getGlobalPosition());
             joint.restoreTransformGL();
         }
+        ofSetColor(ofColor::white);
+        //cam.end();
+        tracker.getOverlayCamera().end();
+        ofDisableDepthTest();
+        ofPopMatrix();
+
         ofPopMatrix();
 
        // cam.end();
@@ -423,24 +478,8 @@ void ofApp::createPointCloud_1(){
 
     pointCloud.clear();
     pointCloud.setMode(OF_PRIMITIVE_POINTS);
-    //unsigned short depthPixel;
-    // I originally had this assignment inside the loop which slowed it down a lot
-    // if set max depth is true then get whole depth image
-    // else limit the range of values using near and far clip
     
-    // epthpixels is grabbed during update from depth cam feed
-    /*
-    if(getFullDepthRange){
-        depthPixels = depth.getPixelsRef(); // thhe whole depth image
-    }
-    else{
-        depthPixels = depth.getPixelsRef(nearclip,farclip,invert);
-    }
-        */
-    //dpWidth = depthPixels.getWidth();
-    //dpHeight = depthPixels.getHeight();
-    //depthPixels = depth.getPixelsRef(100,1000,true);
-
+ 
     //glPointSize(pointSize.get());
     //float noisy_x, noisy_y;
     //float t = (ofGetElapsedTimeMillis()/10.0 ) ;
@@ -507,15 +546,19 @@ void ofApp::createPointCloud_1(){
 }
 
 
-void ofApp::drawPointCloud(){
+
+void ofApp::drawPointCloud(bool enableCam){
   //  rgbStream.draw( ofGetWidth()/2.0-rgb_w/8,ofGetHeight()/2.0 - rgb_h/8 , rgb_w/4, rgb_h/4);
         
     ofEnableDepthTest();
-    cam.begin();
+    if(enableCam){
+        cam.begin();
+    }
     ofPushMatrix();
 
     //ofScale(1, 1, 1);
     ofScale(1, -1, 1);
+    ofDrawAxis(200);
     pointCloud.drawVertices();
     int blur  = ghosts;
 
@@ -528,10 +571,13 @@ void ofApp::drawPointCloud(){
 
     //drawSkeleton();
     ofPopMatrix();
-    cam.end();
+    if(enableCam){
+        cam.end();
+    }
     ofDisableDepthTest();
 
 }
+
 
 void ofApp::resetCamPos(){
         cam.setGlobalPosition(200,-300,-500);

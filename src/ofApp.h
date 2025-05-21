@@ -24,9 +24,11 @@ public:
     void dragEvent(ofDragInfo dragInfo);
     void gotMessage(ofMessage msg);
 
-    void drawPointCloud();
+    void drawStartPage();
+    void drawPointCloud(bool enableCam);
 	void createPointCloud_1();
     bool startRecord(string filename, bool allowLossyCompression, ofxNI2::DepthStream& stream);
+
     void drawSkeleton();
     //void audioIn(ofSoundBuffer & input);
     void drawSound();
@@ -81,9 +83,15 @@ public:
     
     // tracker controls
     ofxFloatSlider   smoothing;
+    ofxFloatSlider  overlaycam_x;
+    ofxFloatSlider  overlaycam_y;
+    ofxFloatSlider  overlaycam_z;
+
 
     ofxToggle addNoise;
     ofxToggle addSound;
+    ofxToggle drawDepthOnTracker;
+
 
     //ofParameter<float>farclip{"far clip",3000,500,5000}; 
 
@@ -92,7 +100,8 @@ public:
     ofxGuiGroup camGroup;
     ofxGuiGroup paramGroup;
     ofxGuiGroup trackerGroup;
-
+    ofEasyCam cam;
+    ofCamera overlayCam;
 
     ofxGuiGroup soundGroup;
 
@@ -119,8 +128,9 @@ public:
     int dfar;
 
     bool drawSoundEnabled;
-
-	
+    
+	ofBoxPrimitive box;
+    ofMaterial material;
 //    vector <float> left;
 //    vector <float> right;
 //    vector <float> volHistory;
