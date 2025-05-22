@@ -91,6 +91,7 @@ public:
     ofxToggle addNoise;
     ofxToggle addSound;
     ofxToggle drawDepthOnTracker;
+    ofxToggle enSkel;
 
 
     //ofParameter<float>farclip{"far clip",3000,500,5000}; 
@@ -143,7 +144,9 @@ public:
     
 //    ofSoundStream soundStream;
     float oldTime;
-
+    ofSpherePrimitive sp1;
+    //ofMaterial material;
+    ofLight l1;
     audioStreamer::audioDevice audioDev;
     int page = 0;
 };

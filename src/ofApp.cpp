@@ -17,14 +17,14 @@ void ofApp::setup()
     ofBackground(0);
     panel.setup("", "settings.xml", 10, 100);
     mouseDepth = 0;
-    pointSize = 3;
+    pointSize = 1;
     camGroup.setup("Virtual Camera");
     camGroup.add(cam_x);
     camGroup.add(cam_y);
     camGroup.add(cam_z);
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
     paramGroup.setup("Pointcloud");
-    paramGroup.add(pointSize.setup("point size",3,1,10));
+    paramGroup.add(pointSize.setup("point size",1,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
     paramGroup.add(farclip.setup("far clip",4000,1000,15000));
     paramGroup.add(colMin.setup("color min",0,0,240));
@@ -37,6 +37,7 @@ void ofApp::setup()
     trackerGroup.setup("Tracker");
     trackerGroup.add(smoothing.setup("smoothing", 0.0,0.9,1.0));
     trackerGroup.add(drawDepthOnTracker.setup("show depth image",false));
+    trackerGroup.add(enSkel.setup("draw3D",true));
     trackerGroup.add(overlaycam_x.setup("overlay cam X",0,-1000,1000));
     trackerGroup.add(overlaycam_y.setup("overlay cam Y",0,-1000,1000));
     trackerGroup.add(overlaycam_z.setup("overlay cam Z",0,-1000,1000));
@@ -76,7 +77,6 @@ void ofApp::setup()
 	    device.setLogLevel(OF_LOG_NOTICE);
         device.setup();
         device.setEnableRegistration();
-        tracker.setup(device);        
         //cout << "registration support" << device.getEnableRegistration() << endl;
         depth.setup(device);      
         depth.setFps(30);
@@ -115,7 +115,7 @@ void ofApp::setup()
         // debug only
         //pb->setSpeed(2.0);
     } 
-
+    tracker.setup(device);        
     audioDev.printDeviceList();
     int device = 0; 
     audioDev.setup(0);
@@ -128,6 +128,7 @@ void ofApp::setup()
     //cam.setTarget(ofVec3f(0.0,0.0,0.0));
 
     depthCamView = true;
+    sp1.set(60,100);
 
     //farclip = cam.getFarClip();
  
@@ -197,7 +198,7 @@ void ofApp::update()
         // passing near clip and far clip returns raw depth data i.e. unsigned int value between 0 - 65535
         if(getFullDepthRange){
             depthPixels = tracker.getPixelsRef();
-       //     depthPixels = depth.getPixelsRef(); // real world depth image
+            //depthPixels = depth.getPixelsRef(); // real world depth image
         }
         else{ 
             depthPixels = tracker.getPixelsRef(nearclip,farclip,invert); // access the depth data and specify near and far range for grayscale shading
@@ -422,8 +423,9 @@ void ofApp::drawSkeleton(){
         overlaycam_z = campos.z;
         //cam.begin();
         //drawPointCloud(false);
-
-        tracker.draw3D();     // draws the skeleton
+        if(enSkel){
+            tracker.draw3D();     // draws the skeleton
+        }
         //tracker.draw();
         tracker.setSkeletonSmoothingFactor(smoothing);
         // draw box
@@ -445,6 +447,9 @@ void ofApp::drawSkeleton(){
             ofxNiTE2::User::Ref user = tracker.getUser(i);
             
             const ofxNiTE2::Joint &joint = user->getJoint(nite::JOINT_HEAD);
+            const ofxNiTE2::Joint &joint_l = user->getJoint(nite::JOINT_LEFT_HAND);
+            const ofxNiTE2::Joint &joint_r = user->getJoint(nite::JOINT_RIGHT_HAND);
+
             //joint.getPosition();
             head = joint.getGlobalPosition();
             //head =   joint.getPosition();
@@ -456,6 +461,14 @@ void ofApp::drawSkeleton(){
             ofDrawBox(100);
             //cam.lookAt(joint.getGlobalPosition());
             joint.restoreTransformGL();
+            joint_l.transformGL();
+            ofDrawBox(30);
+            joint_l.restoreTransformGL();
+            joint_r.transformGL();
+            ofDrawBox(30);
+            joint_r.restoreTransformGL();
+
+
         }
         ofSetColor(ofColor::white);
         //cam.end();
@@ -551,6 +564,8 @@ void ofApp::drawPointCloud(bool enableCam){
   //  rgbStream.draw( ofGetWidth()/2.0-rgb_w/8,ofGetHeight()/2.0 - rgb_h/8 , rgb_w/4, rgb_h/4);
         
     ofEnableDepthTest();
+    l1.enable();
+    l1.lookAt(sp1);
     if(enableCam){
         cam.begin();
     }
@@ -568,12 +583,20 @@ void ofApp::drawPointCloud(bool enableCam){
             pointCloud.drawVertices();
         ofPopMatrix();
     }
+    sp1.setPosition(230,300,2000);
+    material.setAmbientColor(ofColor::aquamarine);
+    material.setMetallic(0.5);
+    material.begin();
+    //sp1.draw();
+    material.end();
+    
 
     //drawSkeleton();
     ofPopMatrix();
     if(enableCam){
         cam.end();
     }
+    l1.disable();
     ofDisableDepthTest();
 
 }
@@ -726,17 +749,17 @@ void ofApp::keyPressed(int key)
     // these are just for messing with at the moment
     if(key=='1'){
            // cam.reset();
-           cam.setGlobalPosition(300,-240,1500);
+           cam.setGlobalPosition(300,-240,3000);
            cam.lookAt(ofVec3f(300.0,-240.0,0.0));
-           depthCamView = false;
+           depthCamView = true;
     }
 
     if(key=='2'){
            // cam.reset();
-           cam.setGlobalPosition(300,-240,-500);
+           cam.setGlobalPosition(300,-240,-2200);
            cam.lookAt(ofVec3f(300.0,-240.0,0.0));
            
-           depthCamView = true; 
+           depthCamView = false; 
     }
 
    
