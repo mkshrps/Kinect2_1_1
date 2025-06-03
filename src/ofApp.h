@@ -62,11 +62,13 @@ public:
 
     // GUI Panel
     ofxPanel panel;
+
+    // camera debug
     ofParameter<float>cam_y{"cam y",0,-1000,1000};
     ofParameter<float>cam_x{"cam x",0,-1000,1000};
     ofParameter<float>cam_z{"cam z",0,-1000,1000};
-    
     ofParameter<ofVec4f>orientParam{"orientation",ofVec4f(0,0,0,0),ofVec4f(0,0,0,0),ofVec4f(0,0,0,0)};
+    ofxFloatSlider cam_heading;
 
 
 
@@ -76,10 +78,11 @@ public:
     ofParameter<float>head_y{"head y",0,-1000,1000};
     ofParameter<float>head_z{"head z",0,-1000,1000};
 
-
     ofParameter<float>dpHeight{"depth pix height",0,1,32000};
-    ofParameter<float>dpWidth{"depth pix height",0,1,32000};
+    ofParameter<float>dpWidth{"depth pix width",0,1,32000};
 
+
+    // point cloud page
     ofxFloatSlider pointSize; 
     ofxFloatSlider farclip;
     ofxFloatSlider nearclip;
@@ -87,22 +90,24 @@ public:
     ofxFloatSlider colMax;
 
     ofxIntSlider ghosts;
-    ofxFloatSlider cam_heading;
-
+    ofxToggle   pcEnableTracking;
     ofxFloatSlider volume_l;
     ofxFloatSlider volume_r;
-    ofxFloatSlider   gain;          // audio vol gain
-    ofxFloatSlider   noiseGain;     // visual noise gain
-    
+    ofxFloatSlider gain;          // audio vol gain
+    ofxFloatSlider noiseGain;     // visual noise gain
+    ofxToggle addNoise;
+    ofxToggle addSound;
+     
     // tracker controls
-    ofxFloatSlider   smoothing;
+    ofxFloatSlider  smoothing;
+    
     ofxFloatSlider  overlaycam_x;
     ofxFloatSlider  overlaycam_y;
     ofxFloatSlider  overlaycam_z;
 
 
-    ofxToggle addNoise;
-    ofxToggle addSound;
+   
+    // tracker test page
     ofxToggle drawDepthOnTracker;
     ofxToggle enSkel;
    

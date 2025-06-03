@@ -41,6 +41,8 @@ void ofApp::setup()
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
     paramGroup.add(showRGB.setup("show rgb",false));
+    paramGroup.add(pcEnableTracking.setup("Enable Tracking",false));
+    
     trackerGroup.setup("Tracker");
     trackerGroup.add(headDetected);
     trackerGroup.add(head_x);
@@ -562,6 +564,11 @@ void ofApp::createPointCloud_1(){
    //headMean = ofVec3f(0,0,0);
     wpMin = ofVec3f(1000,1000,10000);
     wpMax = ofVec3f(-500,0,0);
+    float xMax, yMax, zMax = 0;
+    float xMin = depth.getWidth();
+    float yMin = depth.getHeight();
+    float zMin = 15000;
+    unsigned short dval;
     ofPoint point;
     float dx,dy;
     glPointSize(pointSize);
@@ -577,7 +584,7 @@ void ofApp::createPointCloud_1(){
             int idx = depthPixels.getPixelIndex(x,y);
 
             //unsigned short dval = depth.getPixelsRef()[idx];
-            unsigned short dval = depthPixels[idx];
+            dval = depthPixels[idx];
 
             //if (y > 200 && y < 250){
               //  cout << "value" << dval << endl;
@@ -590,7 +597,7 @@ void ofApp::createPointCloud_1(){
                 dx += noise;
                 dy += noise;
             } 
-
+            // just save the lowest point
             point = ofPoint(dx,dy,dval); 
         //    ofPoint point = ofPoint(x,y,dval); 
             
@@ -616,27 +623,36 @@ void ofApp::createPointCloud_1(){
                     col = rgbStream.getPixelsRef().getColor(x,y);
                     col.setBrightness(ofRandom(255));
                 }
+                // ignore normal display if using tracker
+                if(pcEnableTracking){
+                    // check if we are in the head region
+                    if(headDetected > 0.1){
+                        // detect the whole head region for drawing 
+                    
+                        if(abs(headPosition.x - wp.x) < 100 && abs(headPosition.y - wp.y) < 100 && abs(headPosition.z - wp.z ) < 500 ){
+                        // you can set a different col etc here if required 
+                        // or just leave color as defined by the normal gui controls 
+                           
+                            // now test if we are in a close region of head centre
+                            if(abs(headPosition.x - wp.x) < 50 && abs(headPosition.y - wp.y) < 50 && abs(headPosition.z - wp.z ) < 500 ){
+                            // calculate head centre
 
-                // check if we are in the head region
-                if(headDetected > 0.1){
-                    if(abs(headPosition.x - wp.x) < 100 && abs(headPosition.y - wp.y) < 100 && abs(headPosition.z - wp.z ) < 500 ){
-                        if (wp.x < wpMin.x) wpMin.x = wp.x;
-                        if (wp.y < wpMin.y) wpMin.y = wp.y;
-                        if (wp.z < wpMin.z) wpMin.z = wp.z;
-                        if (wp.x > wpMax.x) wpMax.x = wp.x;
-                        if (wp.y > wpMax.y) wpMax.y = wp.y;
-                        if (wp.z > wpMax.z) wpMax.z = wp.z;
-                        //point.y -= 50;
-                        localHead = point;
+                            if (x < xMin) xMin = x;
+                            if (y < yMin) yMin = y;
+                            if (dval < zMin) zMin = dval;
+                            if (x > xMax) xMax = x;
+                            if (y > yMax) yMax = y;
+                            if (dval > zMax) zMax = dval;
+                            }
+                            //cout << "wp.x , wpMax.x " <<  wp.x << wpMax.x << endl;
+                            //cout << "wp.x , wpMin.x " <<  wp.x << wpMin.x << endl;
 
-                        //cout << "wp.x , wpMax.x " <<  wp.x << wpMax.x << endl;
-                        //cout << "wp.x , wpMin.x " <<  wp.x << wpMin.x << endl;
-
-                       //cout << "head pos " << headPosition.x << "," << headPosition.y << "," << headPosition.z << " world Pos " << wp.x << "," << wp.y << "," << wp.z << endl; 
-                       // col = ofColor::white;
-                    }
-                    else{
-                        col = ofColor::black;
+                        //cout << "head pos " << headPosition.x << "," << headPosition.y << "," << headPosition.z << " world Pos " << wp.x << "," << wp.y << "," << wp.z << endl; 
+                        // col = ofColor::white;
+                        }
+                        else{
+                            col = ofColor::black;
+                        }
                     }
                 }
                 pointCloud.addColor(col);
@@ -645,15 +661,16 @@ void ofApp::createPointCloud_1(){
         }
     }
     
-   if((ofGetElapsedTimef() - oldTime1) > 1.0 ){
-        oldTime1 = ofGetElapsedTimef();
-    
+   
+        // calculate centre of head
+
         headMean.x = (wpMax.x - wpMin.x)/2 + wpMin.x;
         headMean.y = (wpMax.y - wpMin.y)/2 + wpMin.y;
         headMean.z = (wpMax.z - wpMin.z)/2 + wpMin.z;
-
+        localHead.x = (xMax - xMin)/2 + xMin;
+        localHead.y = (yMax - yMin)/2 + yMin;
+        localHead.z = (zMax - zMin)/2 + zMin;
     
-    }
  }
 
 
@@ -687,16 +704,7 @@ void ofApp::drawPointCloud(bool enableCam){
         ofSetColor(ofColor::white);
     headIndicatorNode.restoreTransformGL();
     //cam.setTarget(localHead);
-    /*
-    headIndicatorNode.setPosition(headPosition);
-    headIndicatorNode.transformGL();
-        ofSetColor(ofColor::red);
-        ofDrawBox(40);
-        ofSetColor(ofColor::white);
-    headIndicatorNode.restoreTransformGL();
-    */
-
-    ofDrawAxis(200);
+    //ofDrawAxis(200);
 
     int blur  = ghosts;
 
@@ -721,21 +729,21 @@ void ofApp::drawPointCloud(bool enableCam){
     if(enableCam){
         cam.end();
     }
-//    l1.disable();
    
-    stringstream ss,ss1, ss2,ss3,ms;
+    stringstream ss;
+//    stringstream ss1, ss2,ss3,ms;
 
     ss << "head Node " << headIndicatorNode.getX() << "," <<  headIndicatorNode.getY() << "," << headIndicatorNode.getZ() << endl; 
-    ss1 << "WP Mean " << headMean.x << "," <<  headMean.y << "," << headMean.z << endl;
-    ss2 << "wpMin x,y,z " << wpMin.x << ", " << wpMin.y << ", " << wpMin.z <<  endl; 
-    ss3 << "wpMax x,y,z " << wpMax.x << ", " << wpMax.y << ", " << wpMax.z << endl; 
-    ms << "Mouse xyz" << mouse3DCoords.x << "," << mouse3DCoords.y << ", " << mouse3DCoords.z << endl;
+//    ss1 << "WP Mean " << headMean.x << "," <<  headMean.y << "," << headMean.z << endl;
+//    ss2 << "head Min x,y,z " << wpMin.x << ", " << wpMin.y << ", " << wpMin.z <<  endl; 
+//    ss3 << "head Max x,y,z " << wpMax.x << ", " << wpMax.y << ", " << wpMax.z << endl; 
+    //ms << "Mouse xyz" << mouse3DCoords.x << "," << mouse3DCoords.y << ", " << mouse3DCoords.z << endl;
 
     ofDrawBitmapString(ss.str(),20,ofGetHeight() -80); 
-    ofDrawBitmapString(ss1.str(),20,ofGetHeight() -100); 
-    ofDrawBitmapString(ss2.str(),20,ofGetHeight() -120); 
-    ofDrawBitmapString(ss3.str(),20,ofGetHeight() -140); 
-    ofDrawBitmapString(ms.str(),20,ofGetHeight() -160); 
+//    ofDrawBitmapString(ss1.str(),20,ofGetHeight() -100); 
+//    ofDrawBitmapString(ss2.str(),20,ofGetHeight() -120); 
+//    ofDrawBitmapString(ss3.str(),20,ofGetHeight() -140); 
+//    ofDrawBitmapString(ms.str(),20,ofGetHeight() -160); 
 
 }
 
@@ -892,7 +900,11 @@ void ofApp::keyPressed(int key)
         resetCamPos();
     }
 
-   if(key == 'z') showGui = !showGui;
+    if(key == 'y'){
+        tracker.clear();
+    }
+
+    if(key == 'z') showGui = !showGui;
     
     if(key == OF_KEY_RETURN) ofSaveScreen("screenshot" + ofToString(ofRandom(0,1000),0) + ".png");
     
