@@ -14,7 +14,14 @@
 		},
 		{
 			"path": "../../../../../../../../Volumes/Main backup 1/myApps_backup/Kinect2_1"
+		},
+		{
+			"path": "../../../examples/gui"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"ostream": "cpp"
+		}
+	}
 }

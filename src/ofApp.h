@@ -29,6 +29,7 @@ public:
 	void createPointCloud_1();
     bool startRecord(string filename, bool allowLossyCompression, ofxNI2::DepthStream& stream);
 
+    void trackJoint();
     void drawSkeleton();
     //void audioIn(ofSoundBuffer & input);
     void drawSound();
@@ -47,7 +48,9 @@ public:
     ofxNI2::Device playbackDevice;       // Playback Device
     
     ofxNiTE2::UserTracker tracker;
-    ofPoint head;
+    ofPoint head , headPosition;
+    bool enableTracker;
+
     ofPixels_<unsigned short> depthPixels;
     ofTexture rgbTex;
     
@@ -55,13 +58,23 @@ public:
     ofPixelFormat pfmt;
     ofMesh pointCloud;
     bool showPointCloud = false;
-    
+    glm::quat camOrientation;
+
     // GUI Panel
     ofxPanel panel;
     ofParameter<float>cam_y{"cam y",0,-1000,1000};
     ofParameter<float>cam_x{"cam x",0,-1000,1000};
     ofParameter<float>cam_z{"cam z",0,-1000,1000};
     
+    ofParameter<ofVec4f>orientParam{"orientation",ofVec4f(0,0,0,0),ofVec4f(0,0,0,0),ofVec4f(0,0,0,0)};
+
+
+
+    ofParameter<float>headDetected{"head Conf",0,0,1000};
+
+    ofParameter<float>head_x{"head x",0,-1000,1000};
+    ofParameter<float>head_y{"head y",0,-1000,1000};
+    ofParameter<float>head_z{"head z",0,-1000,1000};
 
 
     ofParameter<float>dpHeight{"depth pix height",0,1,32000};
@@ -92,7 +105,7 @@ public:
     ofxToggle addSound;
     ofxToggle drawDepthOnTracker;
     ofxToggle enSkel;
-
+   
 
     //ofParameter<float>farclip{"far clip",3000,500,5000}; 
 
@@ -143,10 +156,16 @@ public:
 //    float scaledVol;
     
 //    ofSoundStream soundStream;
-    float oldTime;
+    float oldTime,oldTime1;
     ofSpherePrimitive sp1;
     //ofMaterial material;
     ofLight l1;
     audioStreamer::audioDevice audioDev;
     int page = 0;
+
+    ofVec3f headMean;
+    ofVec3f wp;
+    ofVec3f wpMin;
+    ofVec3f wpMax;
+    ofVec3f localHead;
 };

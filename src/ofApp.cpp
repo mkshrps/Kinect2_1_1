@@ -1,6 +1,6 @@
 #include "ofApp.h"
 //#define PLAYBACK
-bool liveDevice;
+bool liveDevice = true;
 
 //
 //--------------------------------------------------------------
@@ -9,6 +9,7 @@ bool liveDevice;
 
 void ofApp::setup()
 {
+    enableTracker = true;
     trackerGroup.setBackgroundColor(ofColor::blue);
     //smoothing.setBackgroundColor(ofColor::blue);
 
@@ -18,10 +19,16 @@ void ofApp::setup()
     panel.setup("", "settings.xml", 10, 100);
     mouseDepth = 0;
     pointSize = 1;
+
     camGroup.setup("Virtual Camera");
     camGroup.add(cam_x);
     camGroup.add(cam_y);
     camGroup.add(cam_z);
+    camGroup.add(orientParam);
+
+
+
+    //camGroup.add(orientParam);
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",1,1,10));
@@ -35,12 +42,17 @@ void ofApp::setup()
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
     paramGroup.add(showRGB.setup("show rgb",false));
     trackerGroup.setup("Tracker");
-    trackerGroup.add(smoothing.setup("smoothing", 0.0,0.9,1.0));
+    trackerGroup.add(headDetected);
+    trackerGroup.add(head_x);
+    trackerGroup.add(head_y);
+    trackerGroup.add(head_z);
+
+    trackerGroup.add(smoothing.setup("smoothing", 0.8,0.5,1.0));
     trackerGroup.add(drawDepthOnTracker.setup("show depth image",false));
     trackerGroup.add(enSkel.setup("draw3D",true));
-    trackerGroup.add(overlaycam_x.setup("overlay cam X",0,-1000,1000));
-    trackerGroup.add(overlaycam_y.setup("overlay cam Y",0,-1000,1000));
-    trackerGroup.add(overlaycam_z.setup("overlay cam Z",0,-1000,1000));
+   // trackerGroup.add(overlaycam_x.setup("overlay cam X",0,-1000,1000));
+   // trackerGroup.add(overlaycam_y.setup("overlay cam Y",0,-1000,1000));
+   // trackerGroup.add(overlaycam_z.setup("overlay cam Z",0,-1000,1000));
 
     // paramGroup.add(enableRgbRegistered.setup("show registered",false));
     soundGroup.setup("Audio");
@@ -50,6 +62,10 @@ void ofApp::setup()
     soundGroup.add(noiseGain.setup("Gain",0,0,10));
     soundGroup.add(addNoise.setup("Noise",false));
     soundGroup.add(addSound.setup("Sound",false));
+    paramGroup.minimize();
+    camGroup.minimize();
+    soundGroup.minimize();
+    recGroup.minimize();
 
     
     //paramGroup.add(dpHeight.set("dpHeight",480));
@@ -65,12 +81,14 @@ void ofApp::setup()
     panel.add(&soundGroup);
 
     panel.loadFromFile("settings.xml");
+    panel.setPosition(10,10);
+
     // force depthrange off for first screen
     getFullDepthRange = false;
 //  edit this when playing back a recorded file
-    liveDevice = true;
+    //liveDevice = true;
     //liveDevice = false;
-    
+
     skellyPage = false;
 
     if(liveDevice){
@@ -115,7 +133,15 @@ void ofApp::setup()
         // debug only
         //pb->setSpeed(2.0);
     } 
-    tracker.setup(device);        
+    
+    // start the HI tracker
+    if(enableTracker){
+        tracker.setup(device);  
+        cout << "tracker width" << tracker.getPixelsRef().getWidth() << "tracker Height " << tracker.getPixelsRef().getHeight() << endl;
+        
+    }
+
+        
     audioDev.printDeviceList();
     int device = 0; 
     audioDev.setup(0);
@@ -155,8 +181,15 @@ void ofApp::update()
     cam_y = cam.getY();
     cam_z = cam.getZ();
     cam_heading = cam.getHeading();
+    ofVec4f vec;
+    vec.x = cam.getGlobalOrientation().x;    
+    vec.y = cam.getGlobalOrientation().y;    
+    vec.z = cam.getGlobalOrientation().z;    
+    vec.w = cam.getGlobalOrientation().w;    
+    orientParam = vec;
 
-    if(liveDevice) {
+
+if(liveDevice) {
         device.update();
         if(rgbStream.isFrameNew()){
             rgbTex.loadData(rgbStream.getPixelsRef());
@@ -192,12 +225,12 @@ void ofApp::update()
     }
     // process depth frame same for live or recorded device
     if(depth.isFrameNew()){
-
         //depthPixels = depth.getPixelsRef(20,6000,false); // access the depth data and specify near and far range for grayscale shading
         // default depth.getPixelsRef() returns depth in mm between 0.5 and 4.5m
         // passing near clip and far clip returns raw depth data i.e. unsigned int value between 0 - 65535
         if(getFullDepthRange){
             depthPixels = tracker.getPixelsRef();
+
             //depthPixels = depth.getPixelsRef(); // real world depth image
         }
         else{ 
@@ -209,6 +242,7 @@ void ofApp::update()
 
         //if(showPointCloud){
         //cout << "frame" << endl;
+            trackJoint();
             createPointCloud_1();
         //}
             //tracker.getPixelsRef()
@@ -357,16 +391,13 @@ void ofApp::draw()
 
     stringstream ss;
     
-    ofDrawBitmapString("head pos x,y,z "+ofToString(head.x)+" "+ofToString(head.y)+" "+ofToString(head.z),20,ofGetHeight()-60);
     //ofDrawBitmapString("users tracked "+ofToString(tracker.getNumUser()),20,ofGetHeight()-100);
-    //ofDrawBitmapString("cam heading "+ofToString(cam.getHeading())+"Target X,Y,Z "+ofToString(dirX)+" "+ofToString(dirY)+" "+ofToString(dirZ),20,ofGetHeight()-60);
-    ofDrawBitmapString("Depth size: "+ofToString(depthPixels.getWidth())+" "+ofToString(depthPixels.getHeight()),20,ofGetHeight()-40);
     ofDrawBitmapString("Application FPS: "+ofToString(ofGetFrameRate()),20,ofGetHeight()-20);
     if(!depthCamView){
-        ofDrawBitmapString("Virtual Cam View",20,ofGetHeight()-80);
+        ofDrawBitmapString("Virtual Cam View",20,ofGetHeight()-40);
     }
     else{
-        ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-80);
+        ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-40);
     }
 }
 
@@ -383,9 +414,39 @@ void ofApp::drawStartPage(){
  
 }
 
+
+void ofApp::trackJoint(){
+    
+    tracker.setSkeletonSmoothingFactor(smoothing);
+    // track the users
+    for (int i = 0; i < tracker.getNumUser(); i++)
+        {
+            ofxNiTE2::User::Ref user = tracker.getUser(i);
+            
+            const ofxNiTE2::Joint &headJoint = user->getJoint(nite::JOINT_HEAD);
+            const ofxNiTE2::Joint &joint_l = user->getJoint(nite::JOINT_LEFT_HAND);
+            const ofxNiTE2::Joint &joint_r = user->getJoint(nite::JOINT_RIGHT_HAND);
+            //joint.getPosition();
+            
+            headDetected = headJoint.getPositionConfidence(); // not returning a value ??
+            headDetected = 1.0;
+            
+            headPosition = headJoint.getGlobalPosition();
+            // corect for openGL Z direction
+            headPosition.z *= -1;
+            // display coordinates for debugging
+            head_x = headPosition.x;
+            head_y = headPosition.y;
+            head_z = headPosition.z;
+
+//            glm::vec3 scale(1.0,1.0,-1.0);
+
+        }
+}
+
 void ofApp::drawSkeleton(){
-       // tracker.draw();
-    // draw 3D skeleton in 2D
+        // tracker.draw();
+        // draw 3D skeleton in 2D
         //ofPushView();
         //tracker.getOverlayCamera().begin(ofRectangle(0, 0, depthTexture.getWidth(), depthTexture.getHeight()));
     
@@ -432,13 +493,6 @@ void ofApp::drawSkeleton(){
         
         //ofNoFill();
         ofDrawAxis(100);
-        ofSetColor(ofColor::brown);
-        box.setPosition(0,0,-1300);
-        material.setAmbientColor(ofColor::aqua);     
-        material.setMetallic(0.5);
-        material.begin();
-        box.draw();
-        material.end();
 
         ofSetColor(255, 0, 0);
 
@@ -452,11 +506,11 @@ void ofApp::drawSkeleton(){
 
             //joint.getPosition();
             head = joint.getGlobalPosition();
-            //head =   joint.getPosition();
-            glm::vec3 scale(1.0,1.0,-1.0);
-
+            head.z *= -1;
+            
             //cam.worldToCamera(head);
             //cam.lookAt(head);
+            
             joint.transformGL();
             ofDrawBox(100);
             //cam.lookAt(joint.getGlobalPosition());
@@ -479,6 +533,12 @@ void ofApp::drawSkeleton(){
         ofPopMatrix();
 
        // cam.end();
+        // display coordinates
+        stringstream ss;
+        ss << "Head Coordinates x,y,x " << head.x << "," << head.y << "," << head.z  << endl; 
+        ofDrawBitmapString(ss.str(),20,ofGetWidth() -20);
+
+        
     } 
 
 
@@ -499,16 +559,20 @@ void ofApp::createPointCloud_1(){
     float noise ;
     noise = (ofNoise(ofRandom(10)) -0.5) * noiseGain;
     //cout << "Noise value" << noise;
-    
+   //headMean = ofVec3f(0,0,0);
+    wpMin = ofVec3f(1000,1000,10000);
+    wpMax = ofVec3f(-500,0,0);
+    ofPoint point;
     float dx,dy;
     glPointSize(pointSize);
+
     for (std::size_t y = 0; y < depthPixels.getHeight(); y++)
     {
         for (std::size_t x = 0; x < depthPixels.getWidth(); x++)
         {
             ///depthPixels.getPixelFormat();
             //unsigned short* pixPtr;
-
+            wp = depth.getWorldCoordinateAt(x,y);
             // work out the current depth value from x,y coords 
             int idx = depthPixels.getPixelIndex(x,y);
 
@@ -527,7 +591,7 @@ void ofApp::createPointCloud_1(){
                 dy += noise;
             } 
 
-            ofPoint point = ofPoint(dx,dy,dval); 
+            point = ofPoint(dx,dy,dval); 
         //    ofPoint point = ofPoint(x,y,dval); 
             
             //if (x%200 == 0){
@@ -552,29 +616,88 @@ void ofApp::createPointCloud_1(){
                     col = rgbStream.getPixelsRef().getColor(x,y);
                     col.setBrightness(ofRandom(255));
                 }
-                    pointCloud.addColor(col);
+
+                // check if we are in the head region
+                if(headDetected > 0.1){
+                    if(abs(headPosition.x - wp.x) < 100 && abs(headPosition.y - wp.y) < 100 && abs(headPosition.z - wp.z ) < 500 ){
+                        if (wp.x < wpMin.x) wpMin.x = wp.x;
+                        if (wp.y < wpMin.y) wpMin.y = wp.y;
+                        if (wp.z < wpMin.z) wpMin.z = wp.z;
+                        if (wp.x > wpMax.x) wpMax.x = wp.x;
+                        if (wp.y > wpMax.y) wpMax.y = wp.y;
+                        if (wp.z > wpMax.z) wpMax.z = wp.z;
+                        //point.y -= 50;
+                        localHead = point;
+
+                        //cout << "wp.x , wpMax.x " <<  wp.x << wpMax.x << endl;
+                        //cout << "wp.x , wpMin.x " <<  wp.x << wpMin.x << endl;
+
+                       //cout << "head pos " << headPosition.x << "," << headPosition.y << "," << headPosition.z << " world Pos " << wp.x << "," << wp.y << "," << wp.z << endl; 
+                       // col = ofColor::white;
+                    }
+                    else{
+                        col = ofColor::black;
+                    }
+                }
+                pointCloud.addColor(col);
+               
             }
         }
     }
-}
+    
+   if((ofGetElapsedTimef() - oldTime1) > 1.0 ){
+        oldTime1 = ofGetElapsedTimef();
+    
+        headMean.x = (wpMax.x - wpMin.x)/2 + wpMin.x;
+        headMean.y = (wpMax.y - wpMin.y)/2 + wpMin.y;
+        headMean.z = (wpMax.z - wpMin.z)/2 + wpMin.z;
+
+    
+    }
+ }
 
 
 
 void ofApp::drawPointCloud(bool enableCam){
   //  rgbStream.draw( ofGetWidth()/2.0-rgb_w/8,ofGetHeight()/2.0 - rgb_h/8 , rgb_w/4, rgb_h/4);
+   ofNode headIndicatorNode;
         
-    ofEnableDepthTest();
-    l1.enable();
-    l1.lookAt(sp1);
-    if(enableCam){
+   
+    //l1.enable();
+    //l1.lookAt(sp1);
+    //headIndicatorNode.setGlobalPosition(headPosition);
+
+     if(enableCam){
+//        cam.setPosition(ofVec3f(headMean.x,headMean.y,headMean.z + 1000));
         cam.begin();
     }
-    ofPushMatrix();
+    ofEnableDepthTest();
 
-    //ofScale(1, 1, 1);
+    ofPushMatrix();
     ofScale(1, -1, 1);
-    ofDrawAxis(200);
     pointCloud.drawVertices();
+    //ofVec3f head = headMean;
+    //head.y *= -1;
+    
+    headIndicatorNode.setGlobalPosition(localHead);
+    
+    headIndicatorNode.transformGL();
+        ofSetColor(ofColor::green);
+        ofDrawBox(5);
+        ofSetColor(ofColor::white);
+    headIndicatorNode.restoreTransformGL();
+    //cam.setTarget(localHead);
+    /*
+    headIndicatorNode.setPosition(headPosition);
+    headIndicatorNode.transformGL();
+        ofSetColor(ofColor::red);
+        ofDrawBox(40);
+        ofSetColor(ofColor::white);
+    headIndicatorNode.restoreTransformGL();
+    */
+
+    ofDrawAxis(200);
+
     int blur  = ghosts;
 
     for(int i =0; i<blur; i++){
@@ -583,21 +706,36 @@ void ofApp::drawPointCloud(bool enableCam){
             pointCloud.drawVertices();
         ofPopMatrix();
     }
-    sp1.setPosition(230,300,2000);
+    //sp1.setPosition(230,300,2000);
     material.setAmbientColor(ofColor::aquamarine);
     material.setMetallic(0.5);
     material.begin();
     //sp1.draw();
     material.end();
-    
-
-    //drawSkeleton();
+    ofVec3f mouse3DCoords;
+    mouse3DCoords = cam.screenToWorld(ofVec3f(ofGetMouseX(),ofGetMouseY(),0),ofGetCurrentViewport());
     ofPopMatrix();
+    
+    ofDisableDepthTest();
+   
     if(enableCam){
         cam.end();
     }
-    l1.disable();
-    ofDisableDepthTest();
+//    l1.disable();
+   
+    stringstream ss,ss1, ss2,ss3,ms;
+
+    ss << "head Node " << headIndicatorNode.getX() << "," <<  headIndicatorNode.getY() << "," << headIndicatorNode.getZ() << endl; 
+    ss1 << "WP Mean " << headMean.x << "," <<  headMean.y << "," << headMean.z << endl;
+    ss2 << "wpMin x,y,z " << wpMin.x << ", " << wpMin.y << ", " << wpMin.z <<  endl; 
+    ss3 << "wpMax x,y,z " << wpMax.x << ", " << wpMax.y << ", " << wpMax.z << endl; 
+    ms << "Mouse xyz" << mouse3DCoords.x << "," << mouse3DCoords.y << ", " << mouse3DCoords.z << endl;
+
+    ofDrawBitmapString(ss.str(),20,ofGetHeight() -80); 
+    ofDrawBitmapString(ss1.str(),20,ofGetHeight() -100); 
+    ofDrawBitmapString(ss2.str(),20,ofGetHeight() -120); 
+    ofDrawBitmapString(ss3.str(),20,ofGetHeight() -140); 
+    ofDrawBitmapString(ms.str(),20,ofGetHeight() -160); 
 
 }
 
@@ -655,6 +793,7 @@ void ofApp::keyPressed(int key)
         showRGB = !showRGB;
     }
     
+    // only used for debug
     if(key == 'f'){
             openni::Device &onidev = playbackDevice.get();
             openni::PlaybackControl pb = *onidev.getPlaybackControl();
@@ -685,9 +824,20 @@ void ofApp::keyPressed(int key)
         ofFileDialogResult res;
         res = ofSystemLoadDialog("Loading Preset");
         if(res.bSuccess) panel.loadFromFile(res.filePath);
+
         // set the camera to the preset position
         // otherwise the gui settings will be updated during the next update
         cam.setGlobalPosition(cam_x,cam_y,cam_z);
+        glm::quat q;
+        ofVec4f vec;
+        vec = orientParam;
+        q.x = vec.x;
+        q.y = vec.y;
+        q.z = vec.z;
+        q.w = vec.w;
+
+        cam.setGlobalOrientation(q);
+       /* 
         int flipx = 1;
         if(cam_z < 0){
             flipx = -1;
@@ -696,7 +846,7 @@ void ofApp::keyPressed(int key)
  
         //cam.set
         //cam.lookAt(ofVec3f(0.0,0.0,0.0));
-
+        */
 
     }
 
@@ -758,7 +908,6 @@ void ofApp::keyPressed(int key)
            // cam.reset();
            cam.setGlobalPosition(300,-240,-2200);
            cam.lookAt(ofVec3f(300.0,-240.0,0.0));
-           
            depthCamView = false; 
     }
 
