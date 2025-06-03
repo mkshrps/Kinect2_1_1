@@ -35,6 +35,8 @@ public:
     void drawSound();
 
     void resetCamPos();
+    
+
      // control flags
     bool showGui;
     bool recording;
@@ -130,7 +132,7 @@ public:
     //ofParameter<bool> invert;
     ofxToggle invert;
     ofxToggle getFullDepthRange;
-    ofxToggle colToDepth;       // force map color range to whole depth image
+    ofxToggle colControls;       // force map color range to whole depth image
     ofxToggle trackColor;       // keep both color sliders in sync
     //ofxToggle enableRgbRegistered; // register RGB and Depth streams
     ofxToggle showRGB;          // display RGB feed

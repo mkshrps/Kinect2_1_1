@@ -20,7 +20,7 @@ void ofApp::setup()
     panel.setup("", "settings.xml", 10, 100);
     mouseDepth = 0;
     pointSize = 1;
-
+    //colControls.addListener(this,colControlSwitch);
     camGroup.setup("Virtual Camera");
     camGroup.add(cam_x);
     camGroup.add(cam_y);
@@ -34,9 +34,9 @@ void ofApp::setup()
     paramGroup.add(pointSize.setup("point size",1,1,10));
     paramGroup.add(nearclip.setup("near clip",50,20,2000));
     paramGroup.add(farclip.setup("far clip",4000,1000,15000));
+    paramGroup.add(colControls.setup("enable color controls" , false));
     paramGroup.add(colMin.setup("color min",0,0,240));
     paramGroup.add(colMax.setup("col max",255,10,255));
-    paramGroup.add(colToDepth.setup("color compress" , false));
     paramGroup.add(ghosts.setup("Ghosting",0,0,5)); 
     paramGroup.add(invert.setup("invert" , false));
     paramGroup.add(getFullDepthRange.setup("Max Depth Range" ,false));
@@ -146,7 +146,7 @@ void ofApp::setup()
         
     audioDev.printDeviceList();
     int device = 0; 
-    audioDev.setup(0);
+    audioDev.setup(3);
     framecount = 0;
     resetCamPos();
 
@@ -172,8 +172,18 @@ void ofApp::exit()
 }
 
 
+
 void ofApp::update()
 {
+    if(colControls){
+        colMin.setFillColor(ofColor::gray);
+        colMax.setFillColor(ofColor::gray);
+
+    }
+    else{
+        colMin.setFillColor(ofColor::black);
+        colMax.setFillColor(ofColor::black);
+    }
 
     audioDev.update();
     volume_l = audioDev.getSmoothedVol()*500;
@@ -573,6 +583,10 @@ void ofApp::createPointCloud_1(){
     ofPoint point;
     float dx,dy;
     glPointSize(pointSize);
+    float sv = audioDev.getScaledVol();
+    float vol = ofMap(sv,0,1,0,10);
+    int iVol = vol;
+    ghosts = vol;
 
     for (std::size_t y = 0; y < depthPixels.getHeight(); y++)
     {
@@ -612,11 +626,13 @@ void ofApp::createPointCloud_1(){
                 //pointCloud.addColor(ofColor(0,255,0));
                 ofColor col;
                 if(!showRGB){
-                    if(colToDepth){
-                        col.setHsb(ofMap(dval,nearclip,farclip,0,255) ,255,255);
+                    if(colControls){
+                        // map colors to controls
+                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
                     }
                     else{
-                        col.setHsb(ofMap(dval,nearclip,farclip,colMin,colMax),255,255);
+                        // map colors to depth
+                        col.setHsb(ofMap(dval,nearclip,farclip,0,255) ,255,255);
                     }
 
                 }
@@ -638,10 +654,6 @@ void ofApp::createPointCloud_1(){
                             if(abs(headPosition.x - wp.x) < 10 && abs(headPosition.y - wp.y) < 10 ){
                             // calculate head centre
 
-                                if(firstRun){
-                                        cout << "world coords in had region" <<headPosition.x -  wp.x << ", " << headPosition.y - wp.y << ", " << headPosition.z - wp.z << endl;
-                                    }   
-
 
                                 if (x < xMin.x) {
                                     xMin.x = x;
@@ -661,7 +673,11 @@ void ofApp::createPointCloud_1(){
                                     yMax.x = x;
                                 }
                                 if (dval > zMax) zMax = dval;
+
                             }
+
+                            col.setHsb(ofMap(abs(headPosition.x - wp.x),0,100,colMin,colMax),255,255);
+
                             //ofQuaternion q;
 
                             //cout << "wp.x , wpMax.x " <<  wp.x << wpMax.x << endl;
