@@ -1,6 +1,7 @@
 #include "ofApp.h"
 //#define PLAYBACK
 bool liveDevice = true;
+bool firstRun = true;
 
 //
 //--------------------------------------------------------------
@@ -25,7 +26,6 @@ void ofApp::setup()
     camGroup.add(cam_y);
     camGroup.add(cam_z);
     camGroup.add(orientParam);
-
 
 
     //camGroup.add(orientParam);
@@ -564,9 +564,10 @@ void ofApp::createPointCloud_1(){
    //headMean = ofVec3f(0,0,0);
     wpMin = ofVec3f(1000,1000,10000);
     wpMax = ofVec3f(-500,0,0);
-    float xMax, yMax, zMax = 0;
-    float xMin = depth.getWidth();
-    float yMin = depth.getHeight();
+    ofVec2f xMax, yMax = ofVec2f(0,0);
+    ofVec2f xMin = ofVec2f(depth.getWidth(),0);
+    ofVec2f yMin = ofVec2f(0,depth.getHeight());
+    float zMax = 0;
     float zMin = 15000;
     unsigned short dval;
     ofPoint point;
@@ -580,6 +581,7 @@ void ofApp::createPointCloud_1(){
             ///depthPixels.getPixelFormat();
             //unsigned short* pixPtr;
             wp = depth.getWorldCoordinateAt(x,y);
+            
             // work out the current depth value from x,y coords 
             int idx = depthPixels.getPixelIndex(x,y);
 
@@ -632,18 +634,36 @@ void ofApp::createPointCloud_1(){
                         if(abs(headPosition.x - wp.x) < 100 && abs(headPosition.y - wp.y) < 100 && abs(headPosition.z - wp.z ) < 500 ){
                         // you can set a different col etc here if required 
                         // or just leave color as defined by the normal gui controls 
-                           
-                            // now test if we are in a close region of head centre
-                            if(abs(headPosition.x - wp.x) < 50 && abs(headPosition.y - wp.y) < 50 && abs(headPosition.z - wp.z ) < 500 ){
+                                                      // now test if we are in a close region of head centre
+                            if(abs(headPosition.x - wp.x) < 10 && abs(headPosition.y - wp.y) < 10 ){
                             // calculate head centre
 
-                            if (x < xMin) xMin = x;
-                            if (y < yMin) yMin = y;
-                            if (dval < zMin) zMin = dval;
-                            if (x > xMax) xMax = x;
-                            if (y > yMax) yMax = y;
-                            if (dval > zMax) zMax = dval;
+                                if(firstRun){
+                                        cout << "world coords in had region" <<headPosition.x -  wp.x << ", " << headPosition.y - wp.y << ", " << headPosition.z - wp.z << endl;
+                                    }   
+
+
+                                if (x < xMin.x) {
+                                    xMin.x = x;
+                                    xMin.y = y;
+                                }
+                                if (y < yMin.y){
+                                    yMin.y = y;
+                                    yMin.x = x;
+                                }
+                                if (dval < zMin) zMin = dval;
+                                if (x > xMax.x){
+                                    xMax.x = x;
+                                    xMax.y = y;
+                                }
+                                if (y > yMax.y){
+                                    yMax.y = y; 
+                                    yMax.x = x;
+                                }
+                                if (dval > zMax) zMax = dval;
                             }
+                            //ofQuaternion q;
+
                             //cout << "wp.x , wpMax.x " <<  wp.x << wpMax.x << endl;
                             //cout << "wp.x , wpMin.x " <<  wp.x << wpMin.x << endl;
 
@@ -661,14 +681,18 @@ void ofApp::createPointCloud_1(){
         }
     }
     
+        // finished scan
+        if(pcEnableTracking){
+            firstRun = false;
+        }
    
         // calculate centre of head
 
         headMean.x = (wpMax.x - wpMin.x)/2 + wpMin.x;
         headMean.y = (wpMax.y - wpMin.y)/2 + wpMin.y;
         headMean.z = (wpMax.z - wpMin.z)/2 + wpMin.z;
-        localHead.x = (xMax - xMin)/2 + xMin;
-        localHead.y = (yMax - yMin)/2 + yMin;
+        localHead.x = (xMax.x - xMin.x)/2 + xMin.x;
+        localHead.y = (yMax.y - yMin.y)/2 + yMin.y;
         localHead.z = (zMax - zMin)/2 + zMin;
     
  }
@@ -703,6 +727,7 @@ void ofApp::drawPointCloud(bool enableCam){
         ofDrawBox(5);
         ofSetColor(ofColor::white);
     headIndicatorNode.restoreTransformGL();
+    //localHead.z = 1000;
     //cam.setTarget(localHead);
     //ofDrawAxis(200);
 
@@ -893,8 +918,15 @@ void ofApp::keyPressed(int key)
         }
 
     }
- 
-   if(key=='x'){
+    if(key == 't'){
+        pcEnableTracking = true;
+    }
+
+    if(key == 'u' ){
+        // trigger world coord output
+        firstRun = true;
+    }    
+    if(key=='x'){
        // cam.reset();
         //cam.setGlobalPosition(200,-300,-1000);
         resetCamPos();

@@ -58,7 +58,7 @@ public:
     ofPixelFormat pfmt;
     ofMesh pointCloud;
     bool showPointCloud = false;
-    glm::quat camOrientation;
+//    ofQuaternion camOrientation;
 
     // GUI Panel
     ofxPanel panel;
@@ -68,6 +68,8 @@ public:
     ofParameter<float>cam_x{"cam x",0,-1000,1000};
     ofParameter<float>cam_z{"cam z",0,-1000,1000};
     ofParameter<ofVec4f>orientParam{"orientation",ofVec4f(0,0,0,0),ofVec4f(0,0,0,0),ofVec4f(0,0,0,0)};
+    ofParameter<ofQuaternion>q{"quaternion",ofQuaternion(0,0,0,0),ofQuaternion(0,0,0,0),ofQuaternion(0,0,0,0)};
+
     ofxFloatSlider cam_heading;
 
 
@@ -173,4 +175,5 @@ public:
     ofVec3f wpMin;
     ofVec3f wpMax;
     ofVec3f localHead;
+    
 };
