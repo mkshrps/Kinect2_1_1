@@ -35,7 +35,8 @@ public:
     void drawSound();
 
     void resetCamPos();
-    
+    void setCamera();
+
 
      // control flags
     bool showGui;
@@ -88,8 +89,11 @@ public:
 
     // point cloud page
     ofxFloatSlider pointSize; 
-    ofxFloatSlider farclip;
-    ofxFloatSlider nearclip;
+    ofxFloatSlider farclipSetpoint;
+    ofxFloatSlider nearclipSetpoint;
+    ofxFloatSlider nearclipFine;
+    ofxFloatSlider farclipFine;
+
     ofxFloatSlider colMin;
     ofxFloatSlider colMax;
 
@@ -149,7 +153,7 @@ public:
     int framecount;
     float rgb_w,rgb_h;
     int dfar;
-
+    float nearclip,farclip;
     bool drawSoundEnabled;
     
 	ofBoxPrimitive box;

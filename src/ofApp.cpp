@@ -32,8 +32,11 @@ void ofApp::setup()
     camGroup.add(cam_heading.setup("cam heading",0,0,360));
     paramGroup.setup("Pointcloud");
     paramGroup.add(pointSize.setup("point size",1,1,10));
-    paramGroup.add(nearclip.setup("near clip",50,20,2000));
-    paramGroup.add(farclip.setup("far clip",4000,1000,15000));
+    paramGroup.add(nearclipSetpoint.setup("near clip",50,20,2000));
+    paramGroup.add(nearclipFine.setup("near clip fine adj",0,-30,30));
+    paramGroup.add(farclipSetpoint.setup("far clip",4000,1000,15000));
+    paramGroup.add(farclipFine.setup("far clip fine adj",0,-100,100));
+
     paramGroup.add(colControls.setup("enable color controls" , false));
     paramGroup.add(colMin.setup("color min",0,0,240));
     paramGroup.add(colMax.setup("col max",255,10,255));
@@ -200,8 +203,11 @@ void ofApp::update()
     vec.w = cam.getGlobalOrientation().w;    
     orientParam = vec;
 
+    // adjust near and far thresholds using fine adjusters range = 0-10
+    nearclip = nearclipSetpoint + nearclipFine;
+    farclip = farclipSetpoint +  farclipFine;
 
-if(liveDevice) {
+    if(liveDevice) {
         device.update();
         if(rgbStream.isFrameNew()){
             rgbTex.loadData(rgbStream.getPixelsRef());
@@ -411,6 +417,8 @@ void ofApp::draw()
     else{
         ofDrawBitmapString("Depth Cam View",20,ofGetHeight()-40);
     }
+    ofDrawBitmapString("1 - Virtual Cam View / 2 - DepthCamView X - Reset Camera",20,ofGetHeight()-60);
+
 }
 
 void ofApp::drawStartPage(){
@@ -582,11 +590,16 @@ void ofApp::createPointCloud_1(){
     unsigned short dval;
     ofPoint point;
     float dx,dy;
+
     glPointSize(pointSize);
+    // add sound to ghosting effect
     float sv = audioDev.getScaledVol();
     float vol = ofMap(sv,0,1,0,10);
     int iVol = vol;
-    ghosts = vol;
+    if(addSound){
+        ghosts = vol;
+    }
+
 
     for (std::size_t y = 0; y < depthPixels.getHeight(); y++)
     {
@@ -747,6 +760,7 @@ void ofApp::drawPointCloud(bool enableCam){
     //cam.setTarget(localHead);
     //ofDrawAxis(200);
 
+    // add ghosted images 
     int blur  = ghosts;
 
     for(int i =0; i<blur; i++){
@@ -817,7 +831,19 @@ bool ofApp::startRecord(string filename, bool allowLossyCompression, ofxNI2::Dep
 	oni_recorder->start();
 	return oni_recorder->isValid();
 }
-//--------------------------------------------------------------
+    void ofApp::setCamera(){
+        cam.setGlobalPosition(cam_x,cam_y,cam_z);
+        glm::quat q;
+        ofVec4f vec;
+        vec = orientParam;
+        q.x = vec.x;
+        q.y = vec.y;
+        q.z = vec.z;
+        q.w = vec.w;
+
+        cam.setGlobalOrientation(q);
+    }
+        //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
     // a - audio on
@@ -873,20 +899,12 @@ void ofApp::keyPressed(int key)
         ofFileDialogResult res;
         res = ofSystemLoadDialog("Loading Preset");
         if(res.bSuccess) panel.loadFromFile(res.filePath);
+        // reorient and position the easycam
+        setCamera();
 
         // set the camera to the preset position
         // otherwise the gui settings will be updated during the next update
-        cam.setGlobalPosition(cam_x,cam_y,cam_z);
-        glm::quat q;
-        ofVec4f vec;
-        vec = orientParam;
-        q.x = vec.x;
-        q.y = vec.y;
-        q.z = vec.z;
-        q.w = vec.w;
-
-        cam.setGlobalOrientation(q);
-       /* 
+      /* 
         int flipx = 1;
         if(cam_z < 0){
             flipx = -1;
@@ -934,14 +952,11 @@ void ofApp::keyPressed(int key)
         }
 
     }
+    // tracking on off hotkey
     if(key == 't'){
-        pcEnableTracking = true;
+        pcEnableTracking = !pcEnableTracking;
     }
 
-    if(key == 'u' ){
-        // trigger world coord output
-        firstRun = true;
-    }    
     if(key=='x'){
        // cam.reset();
         //cam.setGlobalPosition(200,-300,-1000);
@@ -959,16 +974,23 @@ void ofApp::keyPressed(int key)
     // these are just for messing with at the moment
     if(key=='1'){
            // cam.reset();
-           cam.setGlobalPosition(300,-240,3000);
-           cam.lookAt(ofVec3f(300.0,-240.0,0.0));
-           depthCamView = true;
+        panel.loadFromFile("reset_v.xml");
+        // reorient and position the easycam
+        setCamera();
+
+        //   cam.setGlobalPosition(300,-240,2000);
+        //   cam.lookAt(ofVec3f(300.0,-240.0,0.0));
+           depthCamView = false;
     }
 
     if(key=='2'){
+        panel.loadFromFile("reset_d.xml");
+       // reorient and position the easycam
+        setCamera();
            // cam.reset();
-           cam.setGlobalPosition(300,-240,-2200);
-           cam.lookAt(ofVec3f(300.0,-240.0,0.0));
-           depthCamView = false; 
+        //   cam.setGlobalPosition(300,-240,1900);
+     //      cam.lookAt(ofVec3f(300.0,-240.0,0.0));
+           depthCamView = true; 
     }
 
    
